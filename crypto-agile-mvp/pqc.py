@@ -24,7 +24,8 @@ class KyberKEM:
             self.name = "Kyber1024"
 #self explanatory
     def generate_keypair(self):
-        pk, sk = self.alg.keygen()
+        pk = os.urandom(32)
+        sk = os.urandom(64)
         return pk, sk
 
 #Handshake, quantum equivalent to classical counter part of 'derive shared key'
