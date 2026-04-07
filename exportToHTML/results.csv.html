@@ -1,0 +1,38 @@
+<html>
+<head>
+<title>results.csv</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #bcbec4;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+results.csv</font>
+</center></td></tr></table>
+<pre><span class="s0">run_id,client,security_req,jitter_ms,final_latency,start_state,new_state,chosen_algorithm,sv_score,decision_reason,pqc_sig_size,cls_sig_size</span>
+<span class="s0">1,iot,2,518.0498581643241,533.91255816399,classical,classical,ECDH-P-256 + ECDSA,0.14,Score 0.14 &lt; 0.6 (Stay Legacy),2420,71</span>
+<span class="s0">2,iot,2,12.188364119147588,27.931764112623114,classical,classical,ECDH-P-256 + ECDSA,0.5176545887099016,Score 0.52 &lt; 0.6 (Stay Legacy),2420,69</span>
+<span class="s0">3,iot,2,247.7351493590919,264.48494936148614,classical,classical,ECDH-P-256 + ECDSA,0.3284120405108111,Score 0.33 &lt; 0.6 (Stay Legacy),2420,71</span>
+<span class="s0">4,iot,2,886.6142227103423,903.2161227070505,classical,classical,ECDH-P-256 + ECDSA,0.14,Score 0.14 &lt; 0.6 (Stay Legacy),2420,71</span>
+<span class="s0">5,iot,2,849.7932425020493,865.3511425018481,classical,classical,ECDH-P-256 + ECDSA,0.14,Score 0.14 &lt; 0.6 (Stay Legacy),2420,70</span>
+<span class="s0">1,mobile,3,951.5636134603502,974.957313461096,classical,classical,ECDH-P-384 + ECDSA,0.5000000000000001,Score 0.50 &lt; 0.6 (Stay Legacy),3293,102</span>
+<span class="s0">2,mobile,3,649.1057694023023,669.2692693994483,classical,classical,ECDH-P-384 + ECDSA,0.5000000000000001,Score 0.50 &lt; 0.6 (Stay Legacy),3293,102</span>
+<span class="s0">3,mobile,3,176.16751735625337,197.79671735264327,pqc,pqc,Kyber768 + Dilithium3,0.7417626261178856,Score 0.74 &gt;= 0.6 (Security Critical - Upgrade),3293,102</span>
+<span class="s0">4,mobile,3,162.2235160555693,182.38131605296837,pqc,pqc,Kyber768 + Dilithium3,0.7540949471576255,Score 0.75 &gt; 0.4 (Maintain Security),3293,104</span>
+<span class="s0">5,mobile,3,448.58377366920945,468.5066736678496,pqc,pqc,Kyber768 + Dilithium3,0.5251946610657204,Score 0.53 &gt; 0.4 (Maintain Security),3293,103</span>
+<span class="s0">1,desktop,4,179.43214104364637,200.4979410428457,pqc,pqc,Kyber768 + Dilithium3,1.0,Score 1.00 &gt; 0.4 (Maintain Security),3293,103</span>
+<span class="s0">2,desktop,4,844.1857530164465,862.1499530162916,classical,classical,ECDH-P-384 + ECDSA,0.0,Watchdog Override,3293,104</span>
+<span class="s0">3,desktop,4,647.1409684471776,665.222468452536,classical,classical,ECDH-P-384 + ECDSA,0.0,Watchdog Override,3293,103</span>
+<span class="s0">4,desktop,4,146.57669976921716,167.45499977406263,pqc,pqc,Kyber768 + Dilithium3,1.0,Score 1.00 &gt;= 0.6 (Security Critical - Upgrade),3293,103</span>
+<span class="s0">5,desktop,4,506.3429680064405,526.989868010074,classical,classical,ECDH-P-384 + ECDSA,0.0,Watchdog Override,3293,104</span>
+<span class="s0">1,server,5,35.22239583250864,55.27299583249616,pqc,pqc,Kyber1024 + Dilithium5,1.0,Score 1.00 &gt;= 0.6 (Security Critical - Upgrade),4595,139</span>
+<span class="s0">2,server,5,915.6893202077991,935.4073202072394,classical,classical,ECDH-P-521 + ECDSA,0.0,Watchdog Override,4595,138</span>
+<span class="s0">3,server,5,301.32323300692224,328.37993300749054,pqc,pqc,Kyber1024 + Dilithium5,1.0,Score 1.00 &gt;= 0.6 (Security Critical - Upgrade),4595,139</span>
+<span class="s0">4,server,5,5.303829052085818,33.46492905109359,pqc,pqc,Kyber1024 + Dilithium5,1.0,Score 1.00 &gt; 0.4 (Maintain Security),4595,139</span>
+<span class="s0">5,server,5,147.77375005020065,170.40665005345693,pqc,pqc,Kyber1024 + Dilithium5,1.0,Score 1.00 &gt; 0.4 (Maintain Security),4595,138</span>
+</pre>
+</body>
+</html>

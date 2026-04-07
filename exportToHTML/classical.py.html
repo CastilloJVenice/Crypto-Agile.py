@@ -1,0 +1,68 @@
+<html>
+<head>
+<title>classical.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #7a7e85;}
+.s4 { color: #2aacb8;}
+.s5 { color: #a5c261;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+classical.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">cryptography</span><span class="s2">.</span><span class="s1">hazmat</span><span class="s2">.</span><span class="s1">primitives</span><span class="s2">.</span><span class="s1">asymmetric </span><span class="s0">import </span><span class="s1">ec</span>
+<span class="s0">from </span><span class="s1">cryptography</span><span class="s2">.</span><span class="s1">hazmat</span><span class="s2">.</span><span class="s1">primitives </span><span class="s0">import </span><span class="s1">hashes</span><span class="s2">, </span><span class="s1">serialization</span>
+<span class="s0">from </span><span class="s1">cryptography</span><span class="s2">.</span><span class="s1">hazmat</span><span class="s2">.</span><span class="s1">primitives</span><span class="s2">.</span><span class="s1">kdf</span><span class="s2">.</span><span class="s1">hkdf </span><span class="s0">import </span><span class="s1">HKDF</span>
+<span class="s3">#import classical modules (ECDH, ECDSA)</span>
+
+
+<span class="s3">#Select curves based on the security level. the higher the security level, the higher the curve</span>
+<span class="s3">#assign levels to each client, for e.g if client has level 2 security, assign level 1 ECC).</span>
+<span class="s0">def </span><span class="s1">get_curve_for_security</span><span class="s2">(</span><span class="s1">level</span><span class="s2">):</span>
+    <span class="s0">if </span><span class="s1">level </span><span class="s2">&lt;= </span><span class="s4">2</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">ec</span><span class="s2">.</span><span class="s1">SECP256R1</span><span class="s2">() </span><span class="s3"># Matches Kyber512 strength</span>
+    <span class="s0">elif </span><span class="s1">level </span><span class="s2">&lt;= </span><span class="s4">4</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">ec</span><span class="s2">.</span><span class="s1">SECP384R1</span><span class="s2">() </span><span class="s3"># Matches Kyber768 strength</span>
+    <span class="s0">else</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">ec</span><span class="s2">.</span><span class="s1">SECP521R1</span><span class="s2">() </span><span class="s3"># Matches Kyber1024 strength</span>
+
+<span class="s3">#Generate keypair (public / private keys) for key exchange (Elliptic-curve Diffie-Hellman (ECDH))</span>
+<span class="s0">def </span><span class="s1">generate_ecdh_keypair</span><span class="s2">(</span><span class="s1">security_level</span><span class="s2">=</span><span class="s4">1</span><span class="s2">):</span>
+    <span class="s1">curve </span><span class="s2">= </span><span class="s1">get_curve_for_security</span><span class="s2">(</span><span class="s1">security_level</span><span class="s2">)</span>
+    <span class="s1">priv </span><span class="s2">= </span><span class="s1">ec</span><span class="s2">.</span><span class="s1">generate_private_key</span><span class="s2">(</span><span class="s1">curve</span><span class="s2">)</span>
+    <span class="s1">pub </span><span class="s2">= </span><span class="s1">priv</span><span class="s2">.</span><span class="s1">public_key</span><span class="s2">()</span>
+    <span class="s0">return </span><span class="s1">priv</span><span class="s2">, </span><span class="s1">pub</span>
+
+<span class="s3">#The handshake. combines public key + private key to make a shared secret</span>
+<span class="s0">def </span><span class="s1">derive_shared_key_ecdh</span><span class="s2">(</span><span class="s1">priv</span><span class="s2">, </span><span class="s1">peer_pub</span><span class="s2">, </span><span class="s1">length</span><span class="s2">=</span><span class="s4">32</span><span class="s2">):</span>
+    <span class="s1">shared </span><span class="s2">= </span><span class="s1">priv</span><span class="s2">.</span><span class="s1">exchange</span><span class="s2">(</span><span class="s1">ec</span><span class="s2">.</span><span class="s1">ECDH</span><span class="s2">(), </span><span class="s1">peer_pub</span><span class="s2">)</span>
+    <span class="s1">hkdf </span><span class="s2">= </span><span class="s1">HKDF</span><span class="s2">(</span><span class="s1">algorithm</span><span class="s2">=</span><span class="s1">hashes</span><span class="s2">.</span><span class="s1">SHA256</span><span class="s2">(), </span><span class="s1">length</span><span class="s2">=</span><span class="s1">length</span><span class="s2">, </span><span class="s1">salt</span><span class="s2">=</span><span class="s0">None</span><span class="s2">, </span><span class="s1">info</span><span class="s2">=</span><span class="s5">b'ecdh derived'</span><span class="s2">)</span>
+    <span class="s0">return </span><span class="s1">hkdf</span><span class="s2">.</span><span class="s1">derive</span><span class="s2">(</span><span class="s1">shared</span><span class="s2">)</span>
+
+
+<span class="s3">#Assign Digital signatures to verify identity</span>
+<span class="s0">def </span><span class="s1">ec_sign</span><span class="s2">(</span><span class="s1">private_key</span><span class="s2">, </span><span class="s1">message</span><span class="s2">):</span>
+    <span class="s0">return </span><span class="s1">private_key</span><span class="s2">.</span><span class="s1">sign</span><span class="s2">(</span><span class="s1">message</span><span class="s2">, </span><span class="s1">ec</span><span class="s2">.</span><span class="s1">ECDSA</span><span class="s2">(</span><span class="s1">hashes</span><span class="s2">.</span><span class="s1">SHA256</span><span class="s2">()))</span>
+
+<span class="s0">def </span><span class="s1">ec_verify</span><span class="s2">(</span><span class="s1">public_key</span><span class="s2">, </span><span class="s1">message</span><span class="s2">, </span><span class="s1">signature</span><span class="s2">):</span>
+    <span class="s0">try</span><span class="s2">:</span>
+        <span class="s1">public_key</span><span class="s2">.</span><span class="s1">verify</span><span class="s2">(</span><span class="s1">signature</span><span class="s2">, </span><span class="s1">message</span><span class="s2">, </span><span class="s1">ec</span><span class="s2">.</span><span class="s1">ECDSA</span><span class="s2">(</span><span class="s1">hashes</span><span class="s2">.</span><span class="s1">SHA256</span><span class="s2">()))</span>
+        <span class="s0">return True</span>
+    <span class="s0">except</span><span class="s2">:</span>
+        <span class="s0">return False</span>
+
+<span class="s3"># Serialization functions</span>
+<span class="s0">def </span><span class="s1">serialize_public_key</span><span class="s2">(</span><span class="s1">pub</span><span class="s2">):</span>
+    <span class="s0">return </span><span class="s1">pub</span><span class="s2">.</span><span class="s1">public_bytes</span><span class="s2">(</span><span class="s1">encoding</span><span class="s2">=</span><span class="s1">serialization</span><span class="s2">.</span><span class="s1">Encoding</span><span class="s2">.</span><span class="s1">DER</span><span class="s2">, </span><span class="s1">format</span><span class="s2">=</span><span class="s1">serialization</span><span class="s2">.</span><span class="s1">PublicFormat</span><span class="s2">.</span><span class="s1">SubjectPublicKeyInfo</span><span class="s2">)</span>
+
+<span class="s0">def </span><span class="s1">serialize_private_key</span><span class="s2">(</span><span class="s1">priv</span><span class="s2">):</span>
+    <span class="s0">return </span><span class="s1">priv</span><span class="s2">.</span><span class="s1">private_bytes</span><span class="s2">(</span><span class="s1">encoding</span><span class="s2">=</span><span class="s1">serialization</span><span class="s2">.</span><span class="s1">Encoding</span><span class="s2">.</span><span class="s1">DER</span><span class="s2">, </span><span class="s1">format</span><span class="s2">=</span><span class="s1">serialization</span><span class="s2">.</span><span class="s1">PrivateFormat</span><span class="s2">.</span><span class="s1">PKCS8</span><span class="s2">, </span><span class="s1">encryption_algorithm</span><span class="s2">=</span><span class="s1">serialization</span><span class="s2">.</span><span class="s1">NoEncryption</span><span class="s2">())</span></pre>
+</body>
+</html>

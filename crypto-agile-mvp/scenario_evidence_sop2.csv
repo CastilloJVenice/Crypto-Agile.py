@@ -1,0 +1,13 @@
+scenario,client,security_req,jitter_ms,final_latency_ms,sv_score,decision,reason,chosen_algo
+A_HappyPath,iot,2,10.0,72.89,0.48,CLASSICAL,Score 0.48 < 0.6 (Stay Legacy),ECDH-P-256 + ECDSA
+A_HappyPath,mobile,3,11.15,58.8,0.85,PQC,Score 0.85 >= 0.6 (Security Critical - Upgrade),Kyber768 + Dilithium3
+A_HappyPath,desktop,4,8.53,62.88,1.0,PQC,Score 1.00 > 0.4 (Maintain Security),Kyber768 + Dilithium3
+A_HappyPath,server,5,8.75,61.35,1.0,PQC,Score 1.00 > 0.4 (Maintain Security),Kyber1024 + Dilithium5
+B_StressEvent,iot,2,449.05,492.97,0.15,CLASSICAL,Score 0.15 <= 0.4 (Performance Drop - Downgrade),ECDH-P-256 + ECDSA
+B_StressEvent,mobile,3,449.97,500.75,0.5,CLASSICAL,Score 0.50 < 0.6 (Stay Legacy),ECDH-P-384 + ECDSA
+B_StressEvent,desktop,4,449.05,499.58,0.86,PQC,Score 0.86 >= 0.6 (Security Critical - Upgrade),Kyber768 + Dilithium3
+B_StressEvent,server,5,449.71,503.44,0.0,CLASSICAL,Watchdog Override,ECDH-P-521 + ECDSA
+C_Watchdog,iot,2,648.34,693.12,0.14,CLASSICAL,Score 0.14 < 0.6 (Stay Legacy),ECDH-P-256 + ECDSA
+C_Watchdog,mobile,3,648.3,698.81,0.5,CLASSICAL,Score 0.50 < 0.6 (Stay Legacy),ECDH-P-384 + ECDSA
+C_Watchdog,desktop,4,649.97,696.91,0.0,CLASSICAL,Watchdog Override,ECDH-P-384 + ECDSA
+C_Watchdog,server,5,650.61,712.94,0.0,CLASSICAL,Watchdog Override,ECDH-P-521 + ECDSA

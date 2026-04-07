@@ -1,0 +1,67 @@
+<html>
+<head>
+<title>metrics.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #2aacb8;}
+.s4 { color: #7a7e85;}
+.s5 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+metrics.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">time</span>
+<span class="s0">import </span><span class="s1">psutil</span>
+<span class="s0">import </span><span class="s1">os</span>
+<span class="s0">import </span><span class="s1">csv</span>
+
+<span class="s0">def </span><span class="s1">now_ms</span><span class="s2">():</span>
+    <span class="s0">return </span><span class="s1">time</span><span class="s2">.</span><span class="s1">perf_counter</span><span class="s2">() * </span><span class="s3">1000</span>
+
+<span class="s0">def </span><span class="s1">snapshot_cpu_memory</span><span class="s2">():</span>
+    <span class="s1">p </span><span class="s2">= </span><span class="s1">psutil</span><span class="s2">.</span><span class="s1">Process</span><span class="s2">(</span><span class="s1">os</span><span class="s2">.</span><span class="s1">getpid</span><span class="s2">())</span>
+    <span class="s4"># Interval=0.0 makes it non-blocking and faster</span>
+    <span class="s1">cpu </span><span class="s2">= </span><span class="s1">psutil</span><span class="s2">.</span><span class="s1">cpu_percent</span><span class="s2">(</span><span class="s1">interval</span><span class="s2">=</span><span class="s3">0.0</span><span class="s2">)</span>
+    <span class="s1">mem </span><span class="s2">= </span><span class="s1">p</span><span class="s2">.</span><span class="s1">memory_info</span><span class="s2">().</span><span class="s1">rss </span><span class="s2">/ (</span><span class="s3">1024 </span><span class="s2">* </span><span class="s3">1024</span><span class="s2">)  </span><span class="s4"># in MB</span>
+    <span class="s0">return </span><span class="s1">cpu</span><span class="s2">, </span><span class="s1">mem</span>
+
+<span class="s0">def </span><span class="s1">measure_time</span><span class="s2">(</span><span class="s1">func</span><span class="s2">, *</span><span class="s1">args</span><span class="s2">, **</span><span class="s1">kwargs</span><span class="s2">):</span>
+    <span class="s1">start_wall </span><span class="s2">= </span><span class="s1">now_ms</span><span class="s2">()</span>
+    <span class="s1">cpu_before</span><span class="s2">, </span><span class="s1">mem_before </span><span class="s2">= </span><span class="s1">snapshot_cpu_memory</span><span class="s2">()</span>
+    <span class="s1">result </span><span class="s2">= </span><span class="s1">func</span><span class="s2">(*</span><span class="s1">args</span><span class="s2">, **</span><span class="s1">kwargs</span><span class="s2">)</span>
+    <span class="s1">cpu_after</span><span class="s2">, </span><span class="s1">mem_after </span><span class="s2">= </span><span class="s1">snapshot_cpu_memory</span><span class="s2">()</span>
+    <span class="s1">end_wall </span><span class="s2">= </span><span class="s1">now_ms</span><span class="s2">()</span>
+    <span class="s0">return </span><span class="s2">{</span>
+        <span class="s5">'result'</span><span class="s2">: </span><span class="s1">result</span><span class="s2">,</span>
+        <span class="s5">'time_ms'</span><span class="s2">: </span><span class="s1">end_wall </span><span class="s2">- </span><span class="s1">start_wall</span><span class="s2">,</span>
+        <span class="s5">'cpu_before'</span><span class="s2">: </span><span class="s1">cpu_before</span><span class="s2">,</span>
+        <span class="s5">'cpu_after'</span><span class="s2">: </span><span class="s1">cpu_after</span><span class="s2">,</span>
+        <span class="s5">'mem_before_mb'</span><span class="s2">: </span><span class="s1">mem_before</span><span class="s2">,</span>
+        <span class="s5">'mem_after_mb'</span><span class="s2">: </span><span class="s1">mem_after</span>
+    <span class="s2">}</span>
+
+<span class="s0">def </span><span class="s1">write_results_csv</span><span class="s2">(</span><span class="s1">results</span><span class="s2">, </span><span class="s1">filename</span><span class="s2">=</span><span class="s5">&quot;results.csv&quot;</span><span class="s2">):</span>
+    <span class="s0">if not </span><span class="s1">results</span><span class="s2">:</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s5">&quot;No results to write.&quot;</span><span class="s2">)</span>
+        <span class="s0">return</span>
+
+    <span class="s4"># Use the keys of the first result row as the CSV header</span>
+    <span class="s1">fieldnames </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">results</span><span class="s2">[</span><span class="s3">0</span><span class="s2">].</span><span class="s1">keys</span><span class="s2">())</span>
+
+    <span class="s0">try</span><span class="s2">:</span>
+        <span class="s0">with </span><span class="s1">open</span><span class="s2">(</span><span class="s1">filename</span><span class="s2">, </span><span class="s1">mode</span><span class="s2">=</span><span class="s5">&quot;w&quot;</span><span class="s2">, </span><span class="s1">newline</span><span class="s2">=</span><span class="s5">&quot;&quot;</span><span class="s2">, </span><span class="s1">encoding</span><span class="s2">=</span><span class="s5">&quot;utf-8&quot;</span><span class="s2">) </span><span class="s0">as </span><span class="s1">f</span><span class="s2">:</span>
+            <span class="s1">writer </span><span class="s2">= </span><span class="s1">csv</span><span class="s2">.</span><span class="s1">DictWriter</span><span class="s2">(</span><span class="s1">f</span><span class="s2">, </span><span class="s1">fieldnames</span><span class="s2">=</span><span class="s1">fieldnames</span><span class="s2">)</span>
+            <span class="s1">writer</span><span class="s2">.</span><span class="s1">writeheader</span><span class="s2">()   </span><span class="s4"># &lt;-- Writes the column names</span>
+            <span class="s1">writer</span><span class="s2">.</span><span class="s1">writerows</span><span class="s2">(</span><span class="s1">results</span><span class="s2">)</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s5">f&quot;</span><span class="s0">\n</span><span class="s5">[SUCCESS] Results saved to '</span><span class="s0">{</span><span class="s1">filename</span><span class="s0">}</span><span class="s5">'&quot;</span><span class="s2">)</span>
+    <span class="s0">except </span><span class="s1">Exception </span><span class="s0">as </span><span class="s1">e</span><span class="s2">:</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s5">f&quot;</span><span class="s0">\n</span><span class="s5">[ERROR] Could not write CSV: </span><span class="s0">{</span><span class="s1">e</span><span class="s0">}</span><span class="s5">&quot;</span><span class="s2">)</span></pre>
+</body>
+</html>

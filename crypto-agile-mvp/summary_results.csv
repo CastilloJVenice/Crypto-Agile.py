@@ -1,0 +1,5 @@
+client,avg_latency_ms,avg_payload_bytes,latency_stability_std
+iot,62.08,3188,4.62
+mobile,66.56,4381,2.84
+desktop,66.54,4381,1.78
+server,74.28,6163,3.86

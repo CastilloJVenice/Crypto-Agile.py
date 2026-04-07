@@ -1,0 +1,117 @@
+<html>
+<head>
+<title>switching.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #2aacb8;}
+.s4 { color: #cf8e6d;}
+.s5 { color: #5f826b; font-style: italic;}
+.s6 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+switching.py</font>
+</center></td></tr></table>
+<pre><span class="s0"># switching.py</span>
+
+<span class="s0"># --- BINARY SWITCHING CONFIGURATION ---</span>
+<span class="s0"># High Watermark (0.6): If Score &gt;= 0.6, Switch to PQC (Secure)</span>
+<span class="s0"># Low Watermark (0.4): If Score &lt;= 0.4, Switch to Classical (Legacy)</span>
+<span class="s1">THRESHOLD_HIGH </span><span class="s2">= </span><span class="s3">0.6</span>
+<span class="s1">THRESHOLD_LOW </span><span class="s2">= </span><span class="s3">0.4</span>
+
+
+<span class="s0"># --- HELPER FUNCTIONS ---</span>
+
+<span class="s4">def </span><span class="s1">estimate_latency_ms_for_suite</span><span class="s2">(</span><span class="s1">suite_name</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">baseline_ms</span><span class="s2">: </span><span class="s1">float </span><span class="s2">= </span><span class="s3">5.0</span><span class="s2">, </span><span class="s1">size_bytes</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">0</span><span class="s2">):</span>
+    <span class="s5">&quot;&quot;&quot; 
+    Estimates latency based on packet size. 
+    Reference: Derived from Cloudflare's sizing benchmarks 
+    &quot;&quot;&quot;</span>
+    <span class="s0"># Heuristic: larger packets = higher latency penalty</span>
+    <span class="s0"># We assume a fast internal network (divisor 2000.0)</span>
+    <span class="s1">network_penalty </span><span class="s2">= </span><span class="s1">size_bytes </span><span class="s2">/ </span><span class="s3">2000.0</span>
+    <span class="s4">return </span><span class="s1">baseline_ms </span><span class="s2">+ </span><span class="s1">network_penalty</span>
+
+
+<span class="s4">def </span><span class="s1">calculate_quantum_risk</span><span class="s2">(</span><span class="s1">security_level</span><span class="s2">: </span><span class="s1">int</span><span class="s2">):</span>
+    <span class="s0"># Mosca's Inequality Simulation:</span>
+    <span class="s0"># If security_req is 5 (Top Secret), we force risk to 1.0</span>
+    <span class="s4">return </span><span class="s1">security_level </span><span class="s2">/ </span><span class="s3">5.0</span>
+
+
+<span class="s4">def </span><span class="s1">calculate_resource_penalty</span><span class="s2">(</span><span class="s1">client_type</span><span class="s2">: </span><span class="s1">str</span><span class="s2">):</span>
+    <span class="s1">penalties </span><span class="s2">= {</span>
+        <span class="s6">'iot'</span><span class="s2">: </span><span class="s3">0.9</span><span class="s2">,  </span><span class="s0"># High penalty for IoT (weak CPU)</span>
+        <span class="s6">'mobile'</span><span class="s2">: </span><span class="s3">0.5</span><span class="s2">,  </span><span class="s0"># Medium penalty</span>
+        <span class="s6">'desktop'</span><span class="s2">: </span><span class="s3">0.1</span><span class="s2">,  </span><span class="s0"># Low penalty</span>
+        <span class="s6">'server'</span><span class="s2">: </span><span class="s3">0.0</span>
+    <span class="s2">}</span>
+    <span class="s4">return </span><span class="s1">penalties</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">client_type</span><span class="s2">, </span><span class="s3">0.5</span><span class="s2">)</span>
+
+
+<span class="s4">def </span><span class="s1">calculate_latency_penalty</span><span class="s2">(</span><span class="s1">est_latency_ms</span><span class="s2">: </span><span class="s1">float</span><span class="s2">, </span><span class="s1">max_allowed_ms</span><span class="s2">: </span><span class="s1">float </span><span class="s2">= </span><span class="s3">500.0</span><span class="s2">):</span>
+    <span class="s0"># Derived from [76] Cloudflare (Network constraints)</span>
+    <span class="s0"># Returns 0.0 (No penalty) to 1.0 (Max penalty)</span>
+    <span class="s4">if </span><span class="s1">est_latency_ms </span><span class="s2">&gt;= </span><span class="s1">max_allowed_ms</span><span class="s2">:</span>
+        <span class="s4">return </span><span class="s3">1.0</span>
+    <span class="s4">return </span><span class="s1">est_latency_ms </span><span class="s2">/ </span><span class="s1">max_allowed_ms</span>
+
+
+<span class="s0"># --- CORE LOGIC ---</span>
+
+<span class="s4">def </span><span class="s1">decide_suite</span><span class="s2">(</span><span class="s1">current_state</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">security_req</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">client_type</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">est_latency_pqc</span><span class="s2">: </span><span class="s1">float</span><span class="s2">):</span>
+
+    <span class="s0"># 1. Calculate Inputs (Normalized 0.0 to 1.0)</span>
+    <span class="s1">R_quant </span><span class="s2">= </span><span class="s1">calculate_quantum_risk</span><span class="s2">(</span><span class="s1">security_req</span><span class="s2">)  </span><span class="s0"># Risk</span>
+    <span class="s1">P_cost </span><span class="s2">= </span><span class="s1">calculate_resource_penalty</span><span class="s2">(</span><span class="s1">client_type</span><span class="s2">)  </span><span class="s0"># Resource Cost</span>
+    <span class="s1">P_lat </span><span class="s2">= </span><span class="s1">calculate_latency_penalty</span><span class="s2">(</span><span class="s1">est_latency_pqc</span><span class="s2">)  </span><span class="s0"># Latency Cost</span>
+
+    <span class="s0"># 2. Calculate SV_API Score</span>
+    <span class="s0"># Formula: SV = base_score + (Weight_Risk * Risk) - (Weight_Cost * Cost) - (Weight_Lat * Latency)</span>
+
+
+    <span class="s0"># Weights (Configurable by Policy Engine)</span>
+    <span class="s1">W_R </span><span class="s2">= </span><span class="s3">1.0  </span><span class="s0"># Security priority</span>
+    <span class="s1">W_C </span><span class="s2">= </span><span class="s3">0.4  </span><span class="s0"># Cost priority</span>
+    <span class="s1">W_L </span><span class="s2">= </span><span class="s3">0.4  </span><span class="s0"># Latency priority</span>
+
+    <span class="s1">base_score </span><span class="s2">= </span><span class="s3">0.5</span>
+    <span class="s1">sv_api </span><span class="s2">= </span><span class="s1">base_score </span><span class="s2">+ (</span><span class="s1">W_R </span><span class="s2">* </span><span class="s1">R_quant</span><span class="s2">) - (</span><span class="s1">W_C </span><span class="s2">* </span><span class="s1">P_cost</span><span class="s2">) - (</span><span class="s1">W_L </span><span class="s2">* </span><span class="s1">P_lat</span><span class="s2">)</span>
+
+    <span class="s0"># Clamp score between 0 and 1</span>
+    <span class="s1">sv_api </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s3">0.0</span><span class="s2">, </span><span class="s1">min</span><span class="s2">(</span><span class="s3">1.0</span><span class="s2">, </span><span class="s1">sv_api</span><span class="s2">))</span>
+
+    <span class="s0"># 3. State Machine Logic (Hysteresis)</span>
+    <span class="s1">new_state </span><span class="s2">= </span><span class="s1">current_state  </span><span class="s0"># Default: Stay in current state</span>
+    <span class="s1">reason </span><span class="s2">= </span><span class="s6">&quot;Stable State&quot;</span>
+
+    <span class="s4">if </span><span class="s1">current_state </span><span class="s2">== </span><span class="s6">'classical'</span><span class="s2">:</span>
+        <span class="s0"># Only switch UP if we cross the High Watermark</span>
+        <span class="s4">if </span><span class="s1">sv_api </span><span class="s2">&gt;= </span><span class="s1">THRESHOLD_HIGH</span><span class="s2">:</span>
+            <span class="s1">new_state </span><span class="s2">= </span><span class="s6">'pqc'</span>
+            <span class="s1">reason </span><span class="s2">= </span><span class="s6">f&quot;Score </span><span class="s4">{</span><span class="s1">sv_api</span><span class="s4">:</span><span class="s6">.2f</span><span class="s4">} </span><span class="s6">&gt;= </span><span class="s4">{</span><span class="s1">THRESHOLD_HIGH</span><span class="s4">} </span><span class="s6">(Security Critical - Upgrade)&quot;</span>
+        <span class="s4">else</span><span class="s2">:</span>
+            <span class="s1">reason </span><span class="s2">= </span><span class="s6">f&quot;Score </span><span class="s4">{</span><span class="s1">sv_api</span><span class="s4">:</span><span class="s6">.2f</span><span class="s4">} </span><span class="s6">&lt; </span><span class="s4">{</span><span class="s1">THRESHOLD_HIGH</span><span class="s4">} </span><span class="s6">(Stay Legacy)&quot;</span>
+
+    <span class="s4">elif </span><span class="s1">current_state </span><span class="s2">== </span><span class="s6">'pqc'</span><span class="s2">:</span>
+        <span class="s0"># Only switch DOWN if we drop below Low Watermark</span>
+        <span class="s4">if </span><span class="s1">sv_api </span><span class="s2">&lt;= </span><span class="s1">THRESHOLD_LOW</span><span class="s2">:</span>
+            <span class="s1">new_state </span><span class="s2">= </span><span class="s6">'classical'</span>
+            <span class="s1">reason </span><span class="s2">= </span><span class="s6">f&quot;Score </span><span class="s4">{</span><span class="s1">sv_api</span><span class="s4">:</span><span class="s6">.2f</span><span class="s4">} </span><span class="s6">&lt;= </span><span class="s4">{</span><span class="s1">THRESHOLD_LOW</span><span class="s4">} </span><span class="s6">(Performance Drop - Downgrade)&quot;</span>
+        <span class="s4">else</span><span class="s2">:</span>
+            <span class="s1">reason </span><span class="s2">= </span><span class="s6">f&quot;Score </span><span class="s4">{</span><span class="s1">sv_api</span><span class="s4">:</span><span class="s6">.2f</span><span class="s4">} </span><span class="s6">&gt; </span><span class="s4">{</span><span class="s1">THRESHOLD_LOW</span><span class="s4">} </span><span class="s6">(Maintain Security)&quot;</span>
+
+    <span class="s4">return </span><span class="s1">new_state</span><span class="s2">, {</span>
+        <span class="s6">'sv_api'</span><span class="s2">: </span><span class="s1">sv_api</span><span class="s2">,</span>
+        <span class="s6">'risk'</span><span class="s2">: </span><span class="s1">R_quant</span><span class="s2">,</span>
+        <span class="s6">'reason'</span><span class="s2">: </span><span class="s1">reason</span>
+    <span class="s2">}</span></pre>
+</body>
+</html>

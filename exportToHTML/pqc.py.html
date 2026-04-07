@@ -1,0 +1,92 @@
+<html>
+<head>
+<title>pqc.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #7a7e85;}
+.s3 { color: #bcbec4;}
+.s4 { color: #2aacb8;}
+.s5 { color: #5f826b; font-style: italic;}
+.s6 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+pqc.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">os</span>
+<span class="s2"># Import all variants from the libraries</span>
+<span class="s0">from </span><span class="s1">kyber_py</span><span class="s3">.</span><span class="s1">kyber </span><span class="s0">import </span><span class="s1">Kyber512</span><span class="s3">, </span><span class="s1">Kyber768</span><span class="s3">, </span><span class="s1">Kyber1024</span>
+<span class="s0">from </span><span class="s1">dilithium_py</span><span class="s3">.</span><span class="s1">dilithium </span><span class="s0">import </span><span class="s1">Dilithium2</span><span class="s3">, </span><span class="s1">Dilithium3</span><span class="s3">, </span><span class="s1">Dilithium5</span>
+<span class="s2">#import kyber and dilithium, has 3 levels ranging from level 1 to level 3</span>
+
+<span class="s2">#selects kyber based on security level</span>
+<span class="s0">class </span><span class="s1">KyberKEM</span><span class="s3">:</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">security_level</span><span class="s3">=</span><span class="s4">1</span><span class="s3">):</span>
+        <span class="s5">&quot;&quot;&quot; 
+        Dynamically selects the algorithm based on Security Level. 
+        Level 1 -&gt; Kyber512 (NIST L1) 
+        Level 3 -&gt; Kyber768 (NIST L3) 
+        Level 5 -&gt; Kyber1024 (NIST L5) 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">security_level </span><span class="s3">&lt;= </span><span class="s4">2</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">alg </span><span class="s3">= </span><span class="s1">Kyber512</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">name </span><span class="s3">= </span><span class="s6">&quot;Kyber512&quot;</span>
+        <span class="s0">elif </span><span class="s1">security_level </span><span class="s3">&lt;= </span><span class="s4">4</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">alg </span><span class="s3">= </span><span class="s1">Kyber768</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">name </span><span class="s3">= </span><span class="s6">&quot;Kyber768&quot;</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">alg </span><span class="s3">= </span><span class="s1">Kyber1024</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">name </span><span class="s3">= </span><span class="s6">&quot;Kyber1024&quot;</span>
+<span class="s2">#self explanatory</span>
+    <span class="s0">def </span><span class="s1">generate_keypair</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s1">pk</span><span class="s3">, </span><span class="s1">sk </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">alg</span><span class="s3">.</span><span class="s1">keygen</span><span class="s3">()</span>
+        <span class="s0">return </span><span class="s1">pk</span><span class="s3">, </span><span class="s1">sk</span>
+
+<span class="s2">#Handshake, quantum equivalent to classical counter part of 'derive shared key'</span>
+    <span class="s0">def </span><span class="s1">encapsulate</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">public_key</span><span class="s3">):</span>
+        <span class="s1">shared_secret</span><span class="s3">, </span><span class="s1">ciphertext </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">alg</span><span class="s3">.</span><span class="s1">encaps</span><span class="s3">(</span><span class="s1">public_key</span><span class="s3">)</span>
+        <span class="s0">return </span><span class="s1">ciphertext</span><span class="s3">, </span><span class="s1">shared_secret</span>
+
+    <span class="s0">def </span><span class="s1">decapsulate</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">secret_key</span><span class="s3">, </span><span class="s1">ciphertext</span><span class="s3">):</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">alg</span><span class="s3">.</span><span class="s1">decaps</span><span class="s3">(</span><span class="s1">secret_key</span><span class="s3">, </span><span class="s1">ciphertext</span><span class="s3">)</span>
+
+<span class="s2">#Dilithium class for signature</span>
+<span class="s0">class </span><span class="s1">DilithiumSig</span><span class="s3">:</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">security_level</span><span class="s3">=</span><span class="s4">1</span><span class="s3">):</span>
+        <span class="s5">&quot;&quot;&quot; 
+        Dynamically selects Dilithium parameter set. 
+        Level 1-2 -&gt; Dilithium2 
+        Level 3-4 -&gt; Dilithium3 
+        Level 5   -&gt; Dilithium5 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">security_level </span><span class="s3">&lt;= </span><span class="s4">2</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">alg </span><span class="s3">= </span><span class="s1">Dilithium2</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">name </span><span class="s3">= </span><span class="s6">&quot;Dilithium2&quot;</span>
+        <span class="s0">elif </span><span class="s1">security_level </span><span class="s3">&lt;= </span><span class="s4">4</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">alg </span><span class="s3">= </span><span class="s1">Dilithium3</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">name </span><span class="s3">= </span><span class="s6">&quot;Dilithium3&quot;</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">alg </span><span class="s3">= </span><span class="s1">Dilithium5</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">name </span><span class="s3">= </span><span class="s6">&quot;Dilithium5&quot;</span>
+
+    <span class="s0">def </span><span class="s1">generate_keypair</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s1">pk</span><span class="s3">, </span><span class="s1">sk </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">alg</span><span class="s3">.</span><span class="s1">keygen</span><span class="s3">()</span>
+        <span class="s0">return </span><span class="s1">pk</span><span class="s3">, </span><span class="s1">sk</span>
+
+<span class="s2">#for digital signatures, quantum safe replacement of ECDSA</span>
+    <span class="s0">def </span><span class="s1">sign</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">message</span><span class="s3">: </span><span class="s1">bytes</span><span class="s3">, </span><span class="s1">secret_key</span><span class="s3">: </span><span class="s1">bytes</span><span class="s3">) </span><span class="s1">-&gt; bytes</span><span class="s3">:</span>
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">message</span><span class="s3">, </span><span class="s1">str</span><span class="s3">):</span>
+            <span class="s1">message </span><span class="s3">= </span><span class="s1">message</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s6">'utf-8'</span><span class="s3">)</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">alg</span><span class="s3">.</span><span class="s1">sign</span><span class="s3">(</span><span class="s1">secret_key</span><span class="s3">, </span><span class="s1">message</span><span class="s3">)</span>
+
+    <span class="s0">def </span><span class="s1">verify</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">message</span><span class="s3">: </span><span class="s1">bytes</span><span class="s3">, </span><span class="s1">signature</span><span class="s3">: </span><span class="s1">bytes</span><span class="s3">, </span><span class="s1">public_key</span><span class="s3">: </span><span class="s1">bytes</span><span class="s3">) </span><span class="s1">-&gt; bool</span><span class="s3">:</span>
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">message</span><span class="s3">, </span><span class="s1">str</span><span class="s3">):</span>
+            <span class="s1">message </span><span class="s3">= </span><span class="s1">message</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s6">'utf-8'</span><span class="s3">)</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">alg</span><span class="s3">.</span><span class="s1">verify</span><span class="s3">(</span><span class="s1">public_key</span><span class="s3">, </span><span class="s1">message</span><span class="s3">, </span><span class="s1">signature</span><span class="s3">)</span></pre>
+</body>
+</html>

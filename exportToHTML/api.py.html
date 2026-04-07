@@ -1,0 +1,184 @@
+<html>
+<head>
+<title>api.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #7a7e85;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #5f826b; font-style: italic;}
+.s7 { color: #a5c261;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+api.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">time</span>
+<span class="s0">import </span><span class="s1">statistics</span>
+<span class="s0">from </span><span class="s1">fastapi </span><span class="s0">import </span><span class="s1">FastAPI</span><span class="s2">, </span><span class="s1">HTTPException</span>
+<span class="s0">from </span><span class="s1">pydantic </span><span class="s0">import </span><span class="s1">BaseModel</span>
+
+<span class="s3"># Import your modules (Ensure these files are in the same directory)</span>
+<span class="s0">from </span><span class="s1">switching </span><span class="s0">import </span><span class="s1">decide_suite</span>
+<span class="s0">import </span><span class="s1">classical</span>
+<span class="s0">from </span><span class="s1">pqc </span><span class="s0">import </span><span class="s1">KyberKEM</span><span class="s2">, </span><span class="s1">DilithiumSig</span>
+
+<span class="s1">app </span><span class="s2">= </span><span class="s1">FastAPI</span><span class="s2">(</span><span class="s1">title</span><span class="s2">=</span><span class="s4">&quot;Crypto-Agile API Gateway (MVP)&quot;</span><span class="s2">)</span>
+
+<span class="s3"># --- GLOBAL STATE ---</span>
+<span class="s3"># Start in Classical Mode (Safe default)</span>
+<span class="s1">SYSTEM_STATE </span><span class="s2">= </span><span class="s4">&quot;classical&quot;</span>
+
+
+<span class="s3"># --- COMPONENT: TELEMETRY AGGREGATOR ---</span>
+<span class="s3"># This class implements the &quot;Telemetry Aggregator&quot; box from Figure 1.</span>
+<span class="s3"># It collects real-time streams and processes them into usable data for the controller.</span>
+<span class="s0">class </span><span class="s1">TelemetryAggregator</span><span class="s2">:</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">window_size</span><span class="s2">=</span><span class="s5">10</span><span class="s2">, </span><span class="s1">initial_seed</span><span class="s2">=</span><span class="s5">50.0</span><span class="s2">):</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">window_size </span><span class="s2">= </span><span class="s1">window_size</span>
+        <span class="s3"># Seed history so the first request has a baseline to work with</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">history </span><span class="s2">= [</span><span class="s1">initial_seed</span><span class="s2">]</span>
+
+    <span class="s0">def </span><span class="s1">update</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">latency_ms</span><span class="s2">: </span><span class="s1">float</span><span class="s2">):</span>
+        <span class="s6">&quot;&quot;&quot;Ingest new real-time stream data.&quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">history</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">latency_ms</span><span class="s2">)</span>
+        <span class="s3"># Keep the window size fixed (e.g., last 10 requests)</span>
+        <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">history</span><span class="s2">) &gt; </span><span class="s1">self</span><span class="s2">.</span><span class="s1">window_size</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">history</span><span class="s2">.</span><span class="s1">pop</span><span class="s2">(</span><span class="s5">0</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">get_prediction</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; float</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Process data to return a prediction (Moving Average).&quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">history</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s5">50.0  </span><span class="s3"># Fallback default</span>
+        <span class="s0">return </span><span class="s1">statistics</span><span class="s2">.</span><span class="s1">mean</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">history</span><span class="s2">)</span>
+
+
+<span class="s3"># Instantiate the component (Singleton pattern)</span>
+<span class="s1">aggregator </span><span class="s2">= </span><span class="s1">TelemetryAggregator</span><span class="s2">()</span>
+
+
+<span class="s0">class </span><span class="s1">AuthRequest</span><span class="s2">(</span><span class="s1">BaseModel</span><span class="s2">):</span>
+    <span class="s1">client_type</span><span class="s2">: </span><span class="s1">str  </span><span class="s3"># 'iot', 'mobile', 'desktop', 'server'</span>
+    <span class="s1">security_level</span><span class="s2">: </span><span class="s1">int  </span><span class="s3"># 1 to 5</span>
+
+
+<span class="s3"># --- HELPER: REAL-TIME BENCHMARKING ---</span>
+<span class="s0">def </span><span class="s1">execute_and_measure_pqc</span><span class="s2">(</span><span class="s1">security_level</span><span class="s2">: </span><span class="s1">int</span><span class="s2">):</span>
+    <span class="s6">&quot;&quot;&quot; 
+    Runs the actual PQC Key Encapsulation and Signing processes 
+    and returns the execution time in milliseconds. 
+    &quot;&quot;&quot;</span>
+    <span class="s3"># Use perf_counter for high-precision benchmarking</span>
+    <span class="s1">start_time </span><span class="s2">= </span><span class="s1">time</span><span class="s2">.</span><span class="s1">perf_counter</span><span class="s2">()</span>
+
+    <span class="s3"># 1. KEM Operations (Kyber)</span>
+    <span class="s3"># Instantiate the class from your pqc.py</span>
+    <span class="s1">kem </span><span class="s2">= </span><span class="s1">KyberKEM</span><span class="s2">(</span><span class="s1">security_level</span><span class="s2">=</span><span class="s1">security_level</span><span class="s2">)</span>
+    <span class="s1">pk</span><span class="s2">, </span><span class="s1">sk </span><span class="s2">= </span><span class="s1">kem</span><span class="s2">.</span><span class="s1">generate_keypair</span><span class="s2">()</span>
+    <span class="s1">ciphertext</span><span class="s2">, </span><span class="s1">shared_secret </span><span class="s2">= </span><span class="s1">kem</span><span class="s2">.</span><span class="s1">encapsulate</span><span class="s2">(</span><span class="s1">pk</span><span class="s2">)</span>
+    <span class="s3"># Decapsulate is part of the handshake, so we measure it too</span>
+    <span class="s1">_ </span><span class="s2">= </span><span class="s1">kem</span><span class="s2">.</span><span class="s1">decapsulate</span><span class="s2">(</span><span class="s1">sk</span><span class="s2">, </span><span class="s1">ciphertext</span><span class="s2">)</span>
+
+    <span class="s3"># 2. Signature Operations (Dilithium)</span>
+    <span class="s3"># Instantiate the class from your pqc.py</span>
+    <span class="s1">sig_agent </span><span class="s2">= </span><span class="s1">DilithiumSig</span><span class="s2">(</span><span class="s1">security_level</span><span class="s2">=</span><span class="s1">security_level</span><span class="s2">)</span>
+    <span class="s1">pk_sig</span><span class="s2">, </span><span class="s1">sk_sig </span><span class="s2">= </span><span class="s1">sig_agent</span><span class="s2">.</span><span class="s1">generate_keypair</span><span class="s2">()</span>
+    <span class="s1">message </span><span class="s2">= </span><span class="s7">b&quot;Test Authentication Payload&quot;</span>
+    <span class="s1">signature </span><span class="s2">= </span><span class="s1">sig_agent</span><span class="s2">.</span><span class="s1">sign</span><span class="s2">(</span><span class="s1">message</span><span class="s2">, </span><span class="s1">sk_sig</span><span class="s2">)</span>
+    <span class="s3"># Verification is the gateway's job</span>
+    <span class="s1">_ </span><span class="s2">= </span><span class="s1">sig_agent</span><span class="s2">.</span><span class="s1">verify</span><span class="s2">(</span><span class="s1">message</span><span class="s2">, </span><span class="s1">signature</span><span class="s2">, </span><span class="s1">pk_sig</span><span class="s2">)</span>
+
+    <span class="s1">end_time </span><span class="s2">= </span><span class="s1">time</span><span class="s2">.</span><span class="s1">perf_counter</span><span class="s2">()</span>
+
+    <span class="s3"># Return duration in milliseconds</span>
+    <span class="s0">return </span><span class="s2">(</span><span class="s1">end_time </span><span class="s2">- </span><span class="s1">start_time</span><span class="s2">) * </span><span class="s5">1000</span>
+
+
+<span class="s2">@</span><span class="s1">app</span><span class="s2">.</span><span class="s1">post</span><span class="s2">(</span><span class="s4">&quot;/authenticate&quot;</span><span class="s2">)</span>
+<span class="s0">def </span><span class="s1">authenticate_client</span><span class="s2">(</span><span class="s1">request</span><span class="s2">: </span><span class="s1">AuthRequest</span><span class="s2">):</span>
+    <span class="s6">&quot;&quot;&quot; 
+    Main API Endpoint (Data Plane). 
+    Uses 'def' to run CPU-bound crypto tasks in a thread pool. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">global </span><span class="s1">SYSTEM_STATE</span>
+
+    <span class="s3"># ---------------------------------------------------------</span>
+    <span class="s3"># 1. TELEMETRY GATHERING (Real-Time Prediction)</span>
+    <span class="s3"># ---------------------------------------------------------</span>
+    <span class="s3"># Use the Telemetry Aggregator component to get the current estimate</span>
+    <span class="s1">current_avg_pqc_latency </span><span class="s2">= </span><span class="s1">aggregator</span><span class="s2">.</span><span class="s1">get_prediction</span><span class="s2">()</span>
+
+    <span class="s3"># ---------------------------------------------------------</span>
+    <span class="s3"># 2. CONTROL PLANE: DECISION MAKING</span>
+    <span class="s3"># ---------------------------------------------------------</span>
+    <span class="s3"># The Controller decides the suite based on the PREDICTED latency.</span>
+    <span class="s3"># This aligns with the &quot;Crypto-Agility Controller&quot; in Figure 1.</span>
+    <span class="s1">new_state</span><span class="s2">, </span><span class="s1">metadata </span><span class="s2">= </span><span class="s1">decide_suite</span><span class="s2">(</span>
+        <span class="s1">current_state</span><span class="s2">=</span><span class="s1">SYSTEM_STATE</span><span class="s2">,</span>
+        <span class="s1">security_req</span><span class="s2">=</span><span class="s1">request</span><span class="s2">.</span><span class="s1">security_level</span><span class="s2">,</span>
+        <span class="s1">client_type</span><span class="s2">=</span><span class="s1">request</span><span class="s2">.</span><span class="s1">client_type</span><span class="s2">,</span>
+        <span class="s1">est_latency_pqc</span><span class="s2">=</span><span class="s1">current_avg_pqc_latency</span>
+    <span class="s2">)</span>
+
+    <span class="s3"># ---------------------------------------------------------</span>
+    <span class="s3"># 3. DATA PLANE: EXECUTION &amp; MEASUREMENT</span>
+    <span class="s3"># ---------------------------------------------------------</span>
+    <span class="s1">measured_latency </span><span class="s2">= </span><span class="s5">0.0</span>
+
+    <span class="s3"># Run the Watchdog Check (Fail-Safe / Circuit Breaker)</span>
+    <span class="s3"># Aligning with Topic 2: &quot;Quantum-safe watchdog timer protocol&quot;</span>
+    <span class="s1">WATCHDOG_LIMIT_MS </span><span class="s2">= </span><span class="s5">500.0</span>
+    <span class="s0">if </span><span class="s1">new_state </span><span class="s2">== </span><span class="s4">'pqc' </span><span class="s0">and </span><span class="s1">current_avg_pqc_latency </span><span class="s2">&gt; </span><span class="s1">WATCHDOG_LIMIT_MS</span><span class="s2">:</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s4">f&quot;!!! WATCHDOG TRIGGERED: Latency </span><span class="s0">{</span><span class="s1">current_avg_pqc_latency</span><span class="s0">:</span><span class="s4">.2f</span><span class="s0">}</span><span class="s4">ms too high. Fallback.&quot;</span><span class="s2">)</span>
+        <span class="s1">new_state </span><span class="s2">= </span><span class="s4">'classical'</span>
+        <span class="s1">metadata</span><span class="s2">[</span><span class="s4">'reason'</span><span class="s2">] = </span><span class="s4">&quot;Watchdog Override&quot;</span>
+
+    <span class="s3"># EXECUTE THE ALGORITHMS</span>
+    <span class="s0">if </span><span class="s1">new_state </span><span class="s2">== </span><span class="s4">'pqc'</span><span class="s2">:</span>
+        <span class="s3"># --- PQC MODE ---</span>
+        <span class="s3"># Run the heavy math and measure how long it ACTUALLY takes</span>
+        <span class="s1">measured_latency </span><span class="s2">= </span><span class="s1">execute_and_measure_pqc</span><span class="s2">(</span><span class="s1">request</span><span class="s2">.</span><span class="s1">security_level</span><span class="s2">)</span>
+
+        <span class="s3"># UPDATE TELEMETRY: Feed this new fact back into the Aggregator</span>
+        <span class="s1">aggregator</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span><span class="s1">measured_latency</span><span class="s2">)</span>
+
+    <span class="s0">else</span><span class="s2">:</span>
+        <span class="s3"># --- CLASSICAL MODE ---</span>
+        <span class="s3"># We simulate or measure classical. Classical is usually fast.</span>
+        <span class="s1">start_c </span><span class="s2">= </span><span class="s1">time</span><span class="s2">.</span><span class="s1">perf_counter</span><span class="s2">()</span>
+
+        <span class="s3"># Using the low-level functions from your classical.py</span>
+        <span class="s1">priv</span><span class="s2">, </span><span class="s1">pub </span><span class="s2">= </span><span class="s1">classical</span><span class="s2">.</span><span class="s1">generate_ecdh_keypair</span><span class="s2">(</span><span class="s1">request</span><span class="s2">.</span><span class="s1">security_level</span><span class="s2">)</span>
+        <span class="s3"># Simulate simple handshake</span>
+        <span class="s1">_ </span><span class="s2">= </span><span class="s1">classical</span><span class="s2">.</span><span class="s1">derive_shared_key_ecdh</span><span class="s2">(</span><span class="s1">priv</span><span class="s2">, </span><span class="s1">pub</span><span class="s2">)</span>
+
+        <span class="s1">end_c </span><span class="s2">= </span><span class="s1">time</span><span class="s2">.</span><span class="s1">perf_counter</span><span class="s2">()</span>
+        <span class="s1">measured_latency </span><span class="s2">= (</span><span class="s1">end_c </span><span class="s2">- </span><span class="s1">start_c</span><span class="s2">) * </span><span class="s5">1000</span>
+
+    <span class="s3"># ---------------------------------------------------------</span>
+    <span class="s3"># 4. STATE SYNC &amp; RESPONSE</span>
+    <span class="s3"># ---------------------------------------------------------</span>
+    <span class="s1">SYSTEM_STATE </span><span class="s2">= </span><span class="s1">new_state</span>
+
+    <span class="s0">return </span><span class="s2">{</span>
+        <span class="s4">&quot;status&quot;</span><span class="s2">: </span><span class="s4">&quot;success&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;mode&quot;</span><span class="s2">: </span><span class="s1">SYSTEM_STATE</span><span class="s2">.</span><span class="s1">upper</span><span class="s2">(),</span>
+        <span class="s4">&quot;sv_score&quot;</span><span class="s2">: </span><span class="s1">metadata</span><span class="s2">[</span><span class="s4">'sv_api'</span><span class="s2">],</span>
+        <span class="s4">&quot;decision_reason&quot;</span><span class="s2">: </span><span class="s1">metadata</span><span class="s2">[</span><span class="s4">'reason'</span><span class="s2">],</span>
+        <span class="s4">&quot;metrics&quot;</span><span class="s2">: {</span>
+            <span class="s4">&quot;prediction_used_ms&quot;</span><span class="s2">: </span><span class="s1">round</span><span class="s2">(</span><span class="s1">current_avg_pqc_latency</span><span class="s2">, </span><span class="s5">2</span><span class="s2">),</span>
+            <span class="s4">&quot;actual_execution_ms&quot;</span><span class="s2">: </span><span class="s1">round</span><span class="s2">(</span><span class="s1">measured_latency</span><span class="s2">, </span><span class="s5">2</span><span class="s2">),</span>
+            <span class="s4">&quot;history_buffer_size&quot;</span><span class="s2">: </span><span class="s1">len</span><span class="s2">(</span><span class="s1">aggregator</span><span class="s2">.</span><span class="s1">history</span><span class="s2">)</span>
+        <span class="s2">},</span>
+        <span class="s4">&quot;message&quot;</span><span class="s2">: </span><span class="s4">f&quot;Secure connection established using </span><span class="s0">{</span><span class="s1">SYSTEM_STATE</span><span class="s2">.</span><span class="s1">upper</span><span class="s2">()</span><span class="s0">}</span><span class="s4">.&quot;</span>
+    <span class="s2">}</span>
+
+<span class="s3"># To run: uvicorn api:app --reload</span></pre>
+</body>
+</html>

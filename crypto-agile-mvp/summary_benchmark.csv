@@ -1,0 +1,5 @@
+client,avg_classical_latency_ms,avg_pqc_latency_ms,overhead_factor,avg_classical_payload,avg_pqc_payload
+iot,54.28,63.41,1.17,162.03,3188
+mobile,59.18,66.92,1.13,222.93,4381
+desktop,58.57,66.43,1.13,222.83,4381
+server,72.1,81.39,1.13,296.73,6163

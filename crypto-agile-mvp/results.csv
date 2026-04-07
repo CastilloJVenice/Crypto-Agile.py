@@ -1,0 +1,21 @@
+run_id,client,security_req,jitter_ms,service_delay_ms,final_latency_ms,start_state,new_state,chosen_algorithm,sv_score,decision_reason,pqc_sig_size,pqc_kem_size,cls_sig_size,cls_key_size
+1,iot,2,405.39480117841543,30.0,455.88010118303134,classical,classical,ECDH-P-256 + ECDSA,0.17529591905357494,Score 0.18 < 0.6 (Stay Legacy),2420,768,72,91
+2,iot,2,117.24378620375826,30.0,166.2494861978762,classical,classical,ECDH-P-256 + ECDSA,0.40700041104169904,Score 0.41 < 0.6 (Stay Legacy),2420,768,71,91
+3,iot,2,604.8276289038997,30.0,655.5356289089652,classical,classical,ECDH-P-256 + ECDSA,0.14,Score 0.14 < 0.6 (Stay Legacy),2420,768,70,91
+4,iot,2,54.70207653129289,30.0,103.2455765275555,classical,classical,ECDH-P-256 + ECDSA,0.45740353877795564,Score 0.46 < 0.6 (Stay Legacy),2420,768,71,91
+5,iot,2,1145.3738942876728,30.0,1191.6928942839243,classical,classical,ECDH-P-256 + ECDSA,0.14,Score 0.14 < 0.6 (Stay Legacy),2420,768,71,91
+1,mobile,3,685.2886432688895,30.0,742.0358432662275,classical,classical,ECDH-P-384 + ECDSA,0.5000000000000001,Score 0.50 < 0.6 (Stay Legacy),3293,1088,102,120
+2,mobile,3,89.98185472885498,30.0,157.5654547305296,pqc,pqc,Kyber768 + Dilithium3,0.7739476362155764,Score 0.77 >= 0.6 (Security Critical - Upgrade),3293,1088,104,120
+3,mobile,3,443.0869121341678,30.0,493.3457121293792,pqc,pqc,Kyber768 + Dilithium3,0.5053234302964967,Score 0.51 > 0.4 (Maintain Security),3293,1088,103,120
+4,mobile,3,415.6117247612533,30.0,472.1287247592407,pqc,pqc,Kyber768 + Dilithium3,0.5222970201926076,Score 0.52 > 0.4 (Maintain Security),3293,1088,104,120
+5,mobile,3,1017.2861782187515,30.0,1071.068378216413,classical,classical,ECDH-P-384 + ECDSA,0.0,Watchdog Override,3293,1088,103,120
+1,desktop,4,977.5835930706563,30.0,1028.113493071061,classical,classical,ECDH-P-384 + ECDSA,0.0,Watchdog Override,3293,1088,103,120
+2,desktop,4,289.3024747896588,30.0,337.19277479431753,pqc,pqc,Kyber768 + Dilithium3,0.9902457801645459,Score 0.99 >= 0.6 (Security Critical - Upgrade),3293,1088,103,120
+3,desktop,4,710.8020589041801,30.0,764.9616589088242,classical,classical,ECDH-P-384 + ECDSA,0.0,Watchdog Override,3293,1088,102,120
+4,desktop,4,1047.3524180107104,30.0,1115.2094180059876,classical,classical,ECDH-P-384 + ECDSA,0.0,Watchdog Override,3293,1088,104,120
+5,desktop,4,428.54226150881016,30.0,473.9325615111406,pqc,pqc,Kyber768 + Dilithium3,0.8808539507910875,Score 0.88 >= 0.6 (Security Critical - Upgrade),3293,1088,104,120
+1,server,5,592.4305387620308,30.0,650.385038766767,classical,classical,ECDH-P-521 + ECDSA,0.0,Watchdog Override,4595,1568,139,158
+2,server,5,948.5551110398029,30.0,1008.3907110418021,classical,classical,ECDH-P-521 + ECDSA,0.0,Watchdog Override,4595,1568,139,158
+3,server,5,421.37709075900653,30.0,479.58569075590486,pqc,pqc,Kyber1024 + Dilithium5,1.0,Score 1.00 >= 0.6 (Security Critical - Upgrade),4595,1568,139,158
+4,server,5,670.5080785584939,30.0,736.9107785579758,classical,classical,ECDH-P-521 + ECDSA,0.0,Watchdog Override,4595,1568,139,158
+5,server,5,725.0728625938457,30.0,788.4158626001545,classical,classical,ECDH-P-521 + ECDSA,0.0,Watchdog Override,4595,1568,139,158

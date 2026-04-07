@@ -1,0 +1,40 @@
+<html>
+<head>
+<title>README_RUN.md</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #56a8f5;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+README_RUN.md</font>
+</center></td></tr></table>
+<pre><span class="s0"># </span><span class="s2">Crypto-Agile MVP - Run Instructions</span>
+
+<span class="s0">## </span><span class="s2">1. Create virtualenv </span><span class="s1">(</span><span class="s2">recommended</span><span class="s1">)</span>
+<span class="s2">python -m venv venv</span>
+<span class="s2">source venv/bin/activate  # linux / mac</span>
+<span class="s2">venv\Scripts\activate     # windows</span>
+
+<span class="s0">## </span><span class="s2">2. Install requirements</span>
+<span class="s2">pip install -r requirements.txt</span>
+
+<span class="s2">Note</span><span class="s1">: </span><span class="s2">If `pyoqs` installation fails, install it using your OS package manager or wheel. See </span><span class="s3">https://github.com/open-quantum-safe/liboqs </span><span class="s2">for help.</span>
+
+<span class="s0">## </span><span class="s2">3. Run</span>
+<span class="s2">python main.py</span>
+
+<span class="s2">This will perform the test cases </span><span class="s1">(</span><span class="s2">iot, mobile, desktop, server</span><span class="s1">)</span><span class="s2">, print results and write `results.csv`.</span>
+
+<span class="s0">## </span><span class="s2">4. Expected outputs</span>
+<span class="s0">- </span><span class="s2">printed metrics per client case</span>
+<span class="s0">- </span><span class="s2">results.csv with chosen suite and measurement summary</span>
+</pre>
+</body>
+</html>
