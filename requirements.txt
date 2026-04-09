@@ -130,4 +130,4 @@ watchdog==6.0.0
 
 
 
-pyoqs @ git+https://github.com/open-quantum-safe/liboqs-python.git
+liboqs-python @ git+https://github.com/open-quantum-safe/liboqs-python.git
