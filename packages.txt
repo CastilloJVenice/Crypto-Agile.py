@@ -1,0 +1,4 @@
+cmake
+gcc
+ninja-build
+libssl-dev
