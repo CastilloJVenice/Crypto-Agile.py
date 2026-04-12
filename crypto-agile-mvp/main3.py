@@ -3,8 +3,7 @@ import time
 import sys
 import os
 
-# Ensure the script can find local modules in the same directory
-sys.path.append(os.path.dirname(__crypto-agile-mvp__))
+
 
 # Import your modules
 from metrics import measure_time, write_results_csv
