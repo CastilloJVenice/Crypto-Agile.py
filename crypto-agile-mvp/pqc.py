@@ -1,6 +1,6 @@
 import os
 # Import all variants from the libraries
-from kyber_py.kyber import Kyber512, Kyber768, Kyber1024
+from kyber import Kyber512, Kyber768, Kyber1024
 from dilithium import Dilithium2, Dilithium3, Dilithium5
 #import kyber and dilithium, has 3 levels ranging from level 1 to level 3
 
