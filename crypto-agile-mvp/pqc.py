@@ -1,67 +1,53 @@
 import oqs
-import time
 
-#selects kyber based on security level
+# ==========================================
+# KYBER KEM WRAPPER (OQS VERSION)
+# ==========================================
 class KyberKEM:
-    def __init__(self, security_level=1):
-        """
-        Dynamically selects the algorithm based on Security Level.
-        Level 1 -> Kyber512 (NIST L1)
-        Level 3 -> Kyber768 (NIST L3)
-        Level 5 -> Kyber1024 (NIST L5)
-        """
+    def __init__(self, security_level=2):
+        # We only need the STRING name for OQS
         if security_level <= 2:
-            self.alg = Kyber512
             self.name = "Kyber512"
         elif security_level <= 4:
-            self.alg = Kyber768
             self.name = "Kyber768"
         else:
-            self.alg = Kyber1024
             self.name = "Kyber1024"
-#self explanatory
+        
     def generate_keypair(self):
-        pk, sk = self.alg.keygen()
-        return pk, sk
+        with oqs.KeyEncapsulation(self.name) as kem:
+            public_key = kem.generate_keypair()
+            # Export is needed to store the key in your main3.py KEY_POOL
+            private_key = kem.export_secret_key()
+            return public_key, private_key
 
-#Handshake, quantum equivalent to classical counter part of 'derive shared key'
     def encapsulate(self, public_key):
-        shared_secret, ciphertext = self.alg.encaps(public_key)
-        return ciphertext, shared_secret
+        with oqs.KeyEncapsulation(self.name) as kem:
+            ciphertext, shared_secret = kem.encaps_secret(public_key)
+            return ciphertext, shared_secret
 
-    def decapsulate(self, secret_key, ciphertext):
-        return self.alg.decaps(secret_key, ciphertext)
-
-#Dilithium class for signature
+# ==========================================
+# DILITHIUM SIG WRAPPER (OQS VERSION)
+# ==========================================
 class DilithiumSig:
-    def __init__(self, security_level=1):
-        """
-        Dynamically selects Dilithium parameter set.
-        Level 1-2 -> Dilithium2
-        Level 3-4 -> Dilithium3
-        Level 5   -> Dilithium5
-        """
+    def __init__(self, security_level=2):
         if security_level <= 2:
-            self.alg = Dilithium2
             self.name = "Dilithium2"
         elif security_level <= 4:
-            self.alg = Dilithium3
             self.name = "Dilithium3"
         else:
-            self.alg = Dilithium5
             self.name = "Dilithium5"
 
     def generate_keypair(self):
-        pk, sk = self.alg.keygen()
-        return pk, sk
+        with oqs.Signature(self.name) as sig:
+            public_key = sig.generate_keypair()
+            private_key = sig.export_secret_key()
+            return public_key, private_key
 
-#for digital signatures, quantum safe replacement of ECDSA
-    def sign(self, message: bytes, secret_key: bytes) -> bytes:
-        if isinstance(message, str):
-            message = message.encode('utf-8')
-        return self.alg.sign(secret_key, message)
+    def sign(self, message, secret_key):
+        # Re-initialize the sig object with the exported secret key
+        with oqs.Signature(self.name, secret_key) as sig:
+            return sig.sign(message)
 
-    def verify(self, message: bytes, signature: bytes, public_key: bytes) -> bool:
-        if isinstance(message, str):
-            message = message.encode('utf-8')
-        return self.alg.verify(public_key, message, signature)
+    def verify(self, message, signature, public_key):
+        with oqs.Signature(self.name) as sig:
+            return sig.verify(message, signature, public_key)
