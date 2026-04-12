@@ -5,7 +5,7 @@ import oqs
 # ==========================================
 class KyberKEM:
     def __init__(self, security_level=2):
-        # We only need the STRING name for OQS
+        # Map levels to OQS algorithm strings
         if security_level <= 2:
             self.name = "Kyber512"
         elif security_level <= 4:
@@ -16,14 +16,21 @@ class KyberKEM:
     def generate_keypair(self):
         with oqs.KeyEncapsulation(self.name) as kem:
             public_key = kem.generate_keypair()
-            # Export is needed to store the key in your main3.py KEY_POOL
+            # Needed for your KEY_POOL in main3.py
             private_key = kem.export_secret_key()
             return public_key, private_key
 
     def encapsulate(self, public_key):
         with oqs.KeyEncapsulation(self.name) as kem:
-            ciphertext, shared_secret = kem.encaps_secret(public_key)
+            # FIX: The method name in OQS is 'encap_secret'
+            ciphertext, shared_secret = kem.encap_secret(public_key)
             return ciphertext, shared_secret
+
+    def decapsulate(self, ciphertext, secret_key):
+        with oqs.KeyEncapsulation(self.name) as kem:
+            # FIX: The method name in OQS is 'decap_secret'
+            shared_secret = kem.decap_secret(ciphertext, secret_key)
+            return shared_secret
 
 # ==========================================
 # DILITHIUM SIG WRAPPER (OQS VERSION)
@@ -44,7 +51,7 @@ class DilithiumSig:
             return public_key, private_key
 
     def sign(self, message, secret_key):
-        # Re-initialize the sig object with the exported secret key
+        # Initialize with secret_key to sign
         with oqs.Signature(self.name, secret_key) as sig:
             return sig.sign(message)
 
