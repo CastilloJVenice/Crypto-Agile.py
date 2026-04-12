@@ -1,49 +1,45 @@
 import random
 import time
+import sys
+import os
+
+# Ensure the script can find local modules in the same directory
+sys.path.append(os.path.dirname(__crypto-agile-mvp__))
 
 # Import your modules
 from metrics import measure_time, write_results_csv
 from switching import estimate_latency_ms_for_suite, decide_suite
 import classical
 from pqc import KyberKEM, DilithiumSig
-from cloud_service import CloudService   # NEW: Cloud service simulation
+from cloud_service import CloudService
 
 # ==========================================
-# PREPARE TEST MESSAGE
+# 1. GLOBAL VARIABLES & FUNCTIONS (EXPOSED)
 # ==========================================
+# These must be outside of main() for the Dashboard to import them
 MESSAGE = b'Test message for authentication and key exchange'
 
-# ==========================================
-# CLIENT PROFILES
-# ==========================================
-CLIENTS = [
-    {'type': 'iot', 'security': 2},
-    {'type': 'mobile', 'security': 3},
-    {'type': 'desktop', 'security': 3},
-    {'type': 'server', 'security': 5}
-]
-
-# ==========================================
 # KEY LIFECYCLE MANAGER (Pre-Generated Keys)
-# ==========================================
 KEY_POOL = {}
 
 
 def pre_generate_keys():
+    """Initializes keys so the dashboard/simulation starts faster."""
     print("\n[Key Lifecycle Manager] Status: INITIALIZING...")
     levels_needed = [2, 3, 5]
     for level in levels_needed:
-        kem_temp = KyberKEM(security_level=level)
-        pk, sk = kem_temp.generate_keypair()
-        KEY_POOL[level] = {'pk': pk, 'sk': sk}
-        print(f"   >>> Generated {kem_temp.name} Keys (Level {level}). [READY]")
+        try:
+            kem_temp = KyberKEM(security_level=level)
+            pk, sk = kem_temp.generate_keypair()
+            KEY_POOL[level] = {'pk': pk, 'sk': sk}
+            print(f"   >>> Generated {kem_temp.name} Keys (Level {level}). [READY]")
+        except Exception as e:
+            print(f"   >>> Failed to generate level {level}: {e}")
     print("[Key Lifecycle Manager] Status: ONLINE.\n")
 
 
-# ==========================================
-# CLASSICAL CRYPTO TEST
-# ==========================================
 def run_classical_test(message: bytes, sec_level: int):
+    """Executes ECDH and ECDSA benchmarks."""
     priv_a, pub_a = classical.generate_ecdh_keypair(sec_level)
     priv_b, pub_b = classical.generate_ecdh_keypair(sec_level)
 
@@ -57,12 +53,7 @@ def run_classical_test(message: bytes, sec_level: int):
     pk_bytes = classical.serialize_public_key(pub_a)
     sk_bytes = classical.serialize_private_key(priv_a)
 
-    if sec_level <= 2:
-        curve_name = "P-256"
-    elif sec_level <= 4:
-        curve_name = "P-384"
-    else:
-        curve_name = "P-521"
+    curve_name = "P-256" if sec_level <= 2 else "P-384" if sec_level <= 4 else "P-521"
 
     sizes = {
         'pubkey_size': len(pk_bytes),
@@ -70,12 +61,7 @@ def run_classical_test(message: bytes, sec_level: int):
         'signature_size': len(sig)
     }
 
-    cpu_time_ms = (
-        sign_t['time_ms'] +
-        verify_t['time_ms'] +
-        t1['time_ms'] +
-        t2['time_ms']
-    )
+    cpu_time_ms = sign_t['time_ms'] + verify_t['time_ms'] + t1['time_ms'] + t2['time_ms']
 
     return {
         'algorithm': f"ECDH-{curve_name} + ECDSA",
@@ -84,13 +70,12 @@ def run_classical_test(message: bytes, sec_level: int):
     }
 
 
-# ==========================================
-# PQC CRYPTO TEST (OPTIMIZED)
-# ==========================================
 def run_pqc_test(message: bytes, sec_level: int):
+    """Executes Kyber and Dilithium benchmarks."""
     kem_obj = KyberKEM(security_level=sec_level)
     sig_obj = DilithiumSig(security_level=sec_level)
 
+    # Use pre-generated keys if available
     pool_level = 3 if sec_level == 4 else sec_level
     if pool_level in KEY_POOL:
         pk = KEY_POOL[pool_level]['pk']
@@ -121,12 +106,22 @@ def run_pqc_test(message: bytes, sec_level: int):
 
 
 # ==========================================
-# MAIN EXECUTION
+# 2. SIMULATION CONFIG
+# ==========================================
+CLIENTS = [
+    {'type': 'iot', 'security': 2},
+    {'type': 'mobile', 'security': 3},
+    {'type': 'desktop', 'security': 3},
+    {'type': 'server', 'security': 5}
+]
+
+
+# ==========================================
+# 3. MAIN SIMULATION LOOP
 # ==========================================
 def main():
     pre_generate_keys()
 
-    # Initialize Cloud Service
     cloud_service = CloudService(
         service_name="API-Auth-Service",
         base_latency_ms=30,
@@ -137,7 +132,7 @@ def main():
     CURRENT_STATE = 'classical'
     NUM_RUNS = 5
 
-    print("Running Crypto-Agile MVP with Cloud Service Simulation...")
+    print("Running Crypto-Agile MVP Simulation...")
     print("=" * 70)
 
     for client in CLIENTS:
@@ -151,34 +146,17 @@ def main():
             cls = run_classical_test(MESSAGE, sec_level)
             pqc_res = run_pqc_test(MESSAGE, sec_level)
 
-            # Base protocol latency
-            base_pqc_size = (
-                pqc_res['sizes']['signature_size'] +
-                pqc_res['sizes']['kem_ciphertext']
-            )
+            # Performance Modeling
+            base_pqc_size = pqc_res['sizes']['signature_size'] + pqc_res['sizes']['kem_ciphertext']
+            base_latency = estimate_latency_ms_for_suite('pqc', baseline_ms=5.0, size_bytes=base_pqc_size)
 
-            base_latency = estimate_latency_ms_for_suite(
-                'pqc',
-                baseline_ms=5.0,
-                size_bytes=base_pqc_size
-            )
-
-            # Simulated network jitter
             network_jitter = random.uniform(0, 1200.0)
-
-            # Simulated cloud service processing
             service_metrics = cloud_service.process_request()
             service_delay = service_metrics['service_delay_ms']
 
-            # Final estimated latency
-            final_latency_pqc = (
-                base_latency +
-                network_jitter +
-                service_delay +
-                pqc_res['cpu_time_ms']
-            )
+            final_latency_pqc = base_latency + network_jitter + service_delay + pqc_res['cpu_time_ms']
 
-            # Decision logic
+            # Decision Logic
             new_state, meta = decide_suite(
                 current_state=CURRENT_STATE,
                 security_req=sec_level,
@@ -186,53 +164,31 @@ def main():
                 est_latency_pqc=final_latency_pqc
             )
 
-            # Watchdog override
+            # Watchdog Guard
             if new_state == 'pqc' and final_latency_pqc > 500.0:
-                print(
-                    f"   [Run {i + 1}] !!! WATCHDOG: "
-                    f"Latency ({final_latency_pqc:.1f}ms) > 500ms. Fallback."
-                )
                 new_state = 'classical'
                 meta['reason'] = "Watchdog Override"
                 meta['sv_api'] = 0.0
 
             CURRENT_STATE = new_state
-            chosen_algo = (
-                pqc_res['algorithm']
-                if new_state == 'pqc'
-                else cls['algorithm']
-            )
+            chosen_algo = pqc_res['algorithm'] if new_state == 'pqc' else cls['algorithm']
 
-            print(
-                f"   [Run {i + 1}] "
-                f"Jitter={network_jitter:.1f}ms | "
-                f"Service={service_delay:.1f}ms | "
-                f"Score={meta['sv_api']:.2f} | "
-                f"Action={new_state.upper()}"
-            )
+            print(f"   [Run {i + 1}] Score={meta['sv_api']:.2f} | Action={new_state.upper()}")
 
             results.append({
                 'run_id': i + 1,
                 'client': client_type,
                 'security_req': sec_level,
                 'jitter_ms': network_jitter,
-                'service_delay_ms': service_delay,
                 'final_latency_ms': final_latency_pqc,
-                'start_state': CURRENT_STATE,
                 'new_state': new_state,
                 'chosen_algorithm': chosen_algo,
                 'sv_score': meta['sv_api'],
-                'decision_reason': meta['reason'],
-                'pqc_sig_size': pqc_res['sizes']['signature_size'],
-                'pqc_kem_size': pqc_res['sizes']['kem_ciphertext'],
-                'cls_sig_size': cls['sizes']['signature_size'],
-                'cls_key_size': cls['sizes']['pubkey_size']
+                'decision_reason': meta['reason']
             })
 
     write_results_csv(results, filename="results.csv")
-
-    print("\n" + "=" * 70)
-    print(f"Completed {len(results)} simulations. Results saved to results.csv")
+    print("\nSimulation Complete. Results saved.")
 
 
 if __name__ == "__main__":
