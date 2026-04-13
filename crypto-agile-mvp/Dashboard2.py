@@ -88,14 +88,14 @@ st.markdown("""
         color: white !important;
     }
 
-    /* LATENCY INPUT FIX */
+    /* LATENCY INPUT FIX: White Background with Dark Text for Visibility */
     div[data-baseweb="input"] {
-        background-color: #1f2937 !important;
+        background-color: #ffffff !important;
         border: 1px solid #4b5563 !important;
     }
     input[type="number"], div[data-baseweb="input"] input {
-        color: #ffffff !important;
-        -webkit-text-fill-color: #ffffff !important;
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827 !important;
         font-weight: 600 !important;
     }
 
