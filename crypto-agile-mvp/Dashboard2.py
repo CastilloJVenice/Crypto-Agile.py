@@ -45,11 +45,10 @@ st.markdown("""
         font-weight: 600 !important;
     }
 
-    /* HIDE SIDEBAR CONTROLS */
-    [data-testid="sidebar-collapsed-control"], button[kind="headerNoContext"] {
-        display: none !important;
+    /* THE SIDEBAR ARROW FIX */
+    [data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
     }
-    header { display: none !important; }
 
     /* EXPANDER FIX */
     [data-testid="stExpander"] {
@@ -69,7 +68,7 @@ st.markdown("""
         -webkit-text-fill-color: white !important;
     }
 
-    /* DROPDOWN/SELECTBOX FIX */
+    /* DROPDOWN FIX */
     div[data-baseweb="select"] > div {
         background-color: #1f2937 !important;
         color: white !important;
@@ -91,12 +90,12 @@ st.markdown("""
 
     /* LATENCY INPUT FIX */
     div[data-baseweb="input"] {
-        background-color: #ffffff !important;
+        background-color: #1f2937 !important;
         border: 1px solid #4b5563 !important;
     }
     input[type="number"], div[data-baseweb="input"] input {
-        color: #111827 !important;
-        -webkit-text-fill-color: #111827 !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
         font-weight: 600 !important;
     }
 
@@ -146,34 +145,31 @@ def process_request(sim_device, sim_latency, sim_security, is_manual=False):
     cls_res = run_classical_test(MESSAGE, sim_security)
     pqc_res = run_pqc_test(MESSAGE, sim_security)
 
-    # NEW CONSISTENT LOGIC:
-    # We treat 'sim_latency' as the network baseline for EVERY mode.
+    # Consistent Latency Logic
     base_latency = sim_latency
-
-    # Calculate handshake overhead
     service_delay = cloud_service.process_request()['service_delay_ms']
     crypto_math_time = pqc_res['cpu_time_ms']
     jitter = random.uniform(5, 20)
-
-    # Final Latency = Network + Service + Crypto + Jitter
     final_latency = base_latency + service_delay + crypto_math_time + jitter
 
-    # Decision Engine (The "Brain")
+    # CPU Logic stays here for the brain (decide_suite)
+    cpu_util_for_logic = psutil.cpu_percent()
+
     start_perf = time.perf_counter()
+    # SV API still uses system metrics internally
     new_state, meta = decide_suite(st.session_state.current_state, sim_security, sim_device, final_latency)
 
-    # Watchdog
+    # Watchdog Logic
     if new_state == "pqc" and final_latency > 500:
         new_state = "classical"
         meta["reason"] = "Watchdog Override"
         meta["sv_api"] = 0.0
 
     exec_time_ms = (time.perf_counter() - start_perf) * 1000
+
     st.session_state.current_state = new_state
     algo = pqc_res['algorithm'] if new_state == "pqc" else cls_res['algorithm']
-    cpu_util = psutil.cpu_percent()
-
-    return new_state, meta, algo, final_latency, exec_time_ms, cpu_util
+    return new_state, meta, algo, final_latency, exec_time_ms
 
 
 # =========================
@@ -187,13 +183,12 @@ if mode == "Control Mode":
     device = st.sidebar.selectbox("Device Type", list(STUDY_CLIENTS.keys()))
     latency_in = st.sidebar.number_input("Network Latency (ms)", 0, 5000, 150)
 
-    # MOVED TO DROPDOWN (EXPANDER) UNDER INPUT
     with st.sidebar.expander("Latency Threshold Interpretation", expanded=False):
         st.write("""
         - 0-100 ms: Optimal (Fast and stable)
         - 101-200 ms: Acceptable (Normal operation)
         - 201-500 ms: Degraded (Performance drop)
-        - \\>500 ms: Critical (Fail-safe active)
+        - \>500 ms: Critical (Fail-safe active)
         """)
 
     security_in = STUDY_CLIENTS[device]
@@ -220,22 +215,18 @@ else:
             if mode == "Simulation Mode":
                 s_dev = random.choice(list(STUDY_CLIENTS.keys()))
                 s_lat_in, s_sec = random.uniform(50, 500), STUDY_CLIENTS[s_dev]
-                is_man = False
             elif mode == "Personal Mode":
                 s_lat_in = get_real_latency()
                 s_dev, s_sec = generalize_client(), STUDY_CLIENTS['desktop']
-                is_man = False
             else:  # Control Mode
                 s_lat_in, s_dev, s_sec = latency_in, device, security_in
-                is_man = True
 
-            new_st, meta, algo, f_lat, exec_ms, cpu_util = process_request(s_dev, s_lat_in, s_sec, is_manual=is_man)
+            new_st, meta, algo, f_lat, exec_ms = process_request(s_dev, s_lat_in, s_sec)
             batch.append({
                 "Req #": len(st.session_state.history) + i + 1,
                 "Device": s_dev,
                 "Input Latency": round(s_lat_in, 1),
                 "Final Latency": round(f_lat, 1),
-                "CPU %": cpu_util,
                 "Sec": s_sec,
                 "Mode": new_st,
                 "Algorithm": algo,
@@ -262,7 +253,7 @@ with tab_main:
     with st.expander(f"Instructions for {mode}", expanded=True):
         if mode == "Control Mode":
             st.info(
-                f"Control Mode: You are testing the {device}. Your manual latency of {latency_in}ms will be sent directly to the gateway.")
+                f"Control Mode: You are testing the {device}. Your manual baseline of {latency_in}ms will be sent directly to the gateway.")
         elif mode == "Simulation Mode":
             st.info("Simulation Mode: Generates random users with security levels locked to their device type.")
         elif mode == "Personal Mode":
@@ -277,11 +268,11 @@ with tab_main:
         with col_lg1:
             st.write("Side A: Performance")
             st.write(
-                "If the network is slow (High Latency) or the device is weak (IoT), the system uses Classical encryption because it's fast.")
+                "If the network is slow or the device is weak, the system uses Classical encryption because it's fast.")
         with col_lg2:
             st.write("Side B: Security")
             st.write(
-                "If the data is sensitive (High Security) and the device is strong (Server), the system uses PQC to protect against Quantum hackers.")
+                "If the data is sensitive and the device is strong, the system uses PQC to protect against Quantum hackers.")
         st.write("The SV Score: This is the Weight. If the score is high, the scale tips toward PQC.")
 
     # --- LIVE GATEWAY STATUS COUNTERS ---
@@ -307,13 +298,12 @@ with tab_main:
         s_device = random.choice(list(STUDY_CLIENTS.keys()))
         s_lat_in = random.uniform(50, 500)
         s_sec = STUDY_CLIENTS[s_device]
-        new_st, meta, algo, f_lat, exec_ms, cpu_util = process_request(s_device, s_lat_in, s_sec)
+        new_st, meta, algo, f_lat, exec_ms = process_request(s_device, s_lat_in, s_sec)
         st.session_state.history.append({
             "Req #": len(st.session_state.history) + 1,
             "Device": s_device,
             "Input Latency": round(s_lat_in, 1),
             "Final Latency": round(f_lat, 1),
-            "CPU %": cpu_util,
             "Sec": s_sec,
             "Mode": new_st,
             "Algorithm": algo,
@@ -336,10 +326,10 @@ with tab_main:
         with col_m2:
             if latest["Mode"] == "pqc":
                 st.success(
-                    f"Latest Decision: PQC Activated (Request #{latest['Req #']})\n\nThe security level for this {latest['Device']} device is high enough and latency is manageable.")
+                    f"**Latest Decision: PQC Activated (Request #{latest['Req #']})**\n\nThe security level for this {latest['Device']} device is high enough and latency is manageable. The system has successfully deployed quantum-resistant encryption.")
             else:
                 st.warning(
-                    f"Latest Decision: Classical Maintained (Request #{latest['Req #']})\n\nThe system prioritized availability due to {latest['Final Latency']}ms final latency.")
+                    f"**Latest Decision: Classical Maintained (Request #{latest['Req #']})**\n\nThe system prioritized availability. Given the final latency of {latest['Final Latency']}ms, PQC would have caused a timeout or poor user experience.")
 
         st.markdown("### Activity Data")
         tab_table, tab_trend = st.tabs(["Log History", "View Trends"])
