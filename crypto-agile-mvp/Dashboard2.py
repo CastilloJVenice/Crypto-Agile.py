@@ -202,10 +202,10 @@ if mode == "Control Mode":
 
     with st.sidebar.expander("Latency Threshold Interpretation", expanded=False):
         st.write("""
-        - 0-100 ms: Optimal (Fast and stable) [cite: 586]
-        - 101-200 ms: Acceptable (Normal operation) [cite: 587]
-        - 201-500 ms: Degraded (Performance drop) [cite: 588]
-        - \>500 ms: Critical (Fail-safe active) [cite: 589]
+        - 0-100 ms: Optimal (Fast and stable)
+        - 101-200 ms: Acceptable (Normal operation)
+        - 201-500 ms: Degraded (Performance drop)
+        - \>500 ms: Critical (Fail-safe active)
         """)
 
     security_in = STUDY_CLIENTS[device]
@@ -214,7 +214,7 @@ if mode == "Control Mode":
 
 elif mode == "Simulation Mode":
     num_requests = st.sidebar.slider("Requests to Send", 1, 20, 5)
-elif mode mode == "Personal Mode":
+elif mode == "Personal Mode":
     num_requests = 1
 else:
     stream_speed = st.sidebar.slider("Traffic Speed (sec)", 0.5, 3.0, 1.5)
@@ -371,23 +371,23 @@ with tab_main:
 with tab_about:
     st.header("About the Crypto-Agile Gateway")
     st.write("""
-    This project demonstrates a next-generation security layer for API Gateways. [cite: 742, 954]
+    This project demonstrates a next-generation security layer for API Gateways.
 As we move toward the 'Quantum Era', computers will become powerful enough to break current encryption (RSA/ECC),
-making traditional security approaches unreliable. [cite: 808, 839] To address this, the system explores quantum-resistant cryptographic algorithms, such as lattice-based encryption,
-which are designed to withstand attacks from quantum computers. [cite: 809, 868] By integrating these advanced techniques into API Gateway infrastructure,
-the project aims to ensure long-term data protection, secure communication, and future-proof defenses against emerging computational threats. [cite: 933, 951]
+making traditional security approaches unreliable. To address this, the system explores quantum-resistant cryptographic algorithms, such as lattice-based encryption,
+which are designed to withstand attacks from quantum computers. By integrating these advanced techniques into API Gateway infrastructure,
+the project aims to ensure long-term data protection, secure communication, and future-proof defenses against emerging computational threats.
     """)
 
     col_a, col_b = st.columns(2)
     with col_a:
         st.subheader("The Agility Logic")
         st.write(
-            "Agility means being able to switch algorithms without stopping the system. [cite: 890, 1084] We use an **SV Score (Security Value)** formula to decide when to switch. [cite: 1740, 1862]")
+            "Agility means being able to switch algorithms without stopping the system. We use an **SV Score (Security Value)** formula to decide when to switch.")
 
     with col_b:
         st.subheader("The Algorithms")
         st.markdown("""
-        * Kyber (KEM): Used for key exchange. [cite: 871, 981]
-        * Dilithium (Sig): Used for digital signatures. [cite: 869, 978]
-        * ECDSA: The current standard for mobile and IoT. [cite: 826, 833]
+        * Kyber (KEM): Used for key exchange.
+        * Dilithium (Sig): Used for digital signatures.
+        * ECDSA: The current standard for mobile and IoT.
         """)
