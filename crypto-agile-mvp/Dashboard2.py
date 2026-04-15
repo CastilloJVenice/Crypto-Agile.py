@@ -25,7 +25,7 @@ STUDY_CLIENTS = {
 }
 
 # =========================
-# STYLE - FINAL VISIBILITY FIX
+# STYLE - VISIBILITY FIX
 # =========================
 st.markdown("""
 <style>
@@ -75,21 +75,18 @@ st.markdown("""
         border: 1px solid #4b5563 !important;
     }
 
-    /* --- LATENCY INPUT FORCED WHITE TEXT FIX --- */
-    /* Forces the background to be dark but the text to be pure white */
+    /* LATENCY INPUT VISIBILITY FIX */
     div[data-testid="stNumberInput"] div[data-baseweb="input"] {
         background-color: #111827 !important;
         border: 1px solid #4b5563 !important;
     }
     
-    /* Targets the actual text inside the input field */
     div[data-testid="stNumberInput"] input {
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
         font-weight: 700 !important;
     }
 
-    /* Ensures the plus/minus buttons are high contrast */
     div[data-testid="stNumberInput"] button {
         background-color: #ffffff !important;
         color: #111827 !important;
@@ -246,13 +243,16 @@ st.title("Crypto-Agile API Gateway")
 tab_main, tab_about = st.tabs(["Dashboard", "System Info"])
 
 with tab_main:
+    # --- RESTORED INSTRUCTIONS BOX ---
     with st.expander(f"Instructions for {mode}", expanded=True):
         if mode == "Control Mode":
-            st.info(f"Control Mode: You are testing the {device}. Your manual baseline of {latency_in}ms will be sent directly to the gateway.")
+            st.info(
+                f"Control Mode: You are testing the {device}. Your manual baseline of {latency_in}ms will be sent directly to the gateway.")
         elif mode == "Simulation Mode":
             st.info("Simulation Mode: Generates random users with security levels locked to their device type.")
         elif mode == "Personal Mode":
-            st.info(f"Personal Mode: Testing your actual hardware. Security Level is set to {STUDY_CLIENTS['desktop']}.")
+            st.info(
+                f"Personal Mode: Testing your actual hardware. Security Level is set to {STUDY_CLIENTS['desktop']}.")
         else:
             st.info("Traffic Stream Mode: A live heartbeat of global requests.")
 
@@ -261,10 +261,12 @@ with tab_main:
         col_lg1, col_lg2 = st.columns(2)
         with col_lg1:
             st.write("Side A: Performance")
-            st.write("If the network is slow or the device is weak, the system uses Classical encryption because it's fast.")
+            st.write(
+                "If the network is slow or the device is weak, the system uses Classical encryption because it's fast.")
         with col_lg2:
             st.write("Side B: Security")
-            st.write("If the data is sensitive and the device is strong, the system uses PQC to protect against Quantum hackers.")
+            st.write(
+                "If the data is sensitive and the device is strong, the system uses PQC to protect against Quantum hackers.")
         st.write("The SV Score: This is the Weight. If the score is high, the scale tips toward PQC.")
 
     st.markdown("### Live Gateway Status")
@@ -300,6 +302,7 @@ with tab_main:
         time.sleep(stream_speed)
         st.rerun()
 
+    # --- RESTORED DECISION INSIGHT TEXT ---
     if st.session_state.history:
         df = pd.DataFrame(st.session_state.history)
         latest = df.iloc[-1]
@@ -309,9 +312,11 @@ with tab_main:
             st.metric("Latest SV Score", latest["SV Score"])
         with col_m2:
             if latest["Mode"] == "pqc":
-                st.success(f"**Latest Decision: PQC Activated (Request #{latest['Req #']})**\n\nThe security level for this {latest['Device']} device is high enough and latency is manageable.")
+                st.success(
+                    f"**Latest Decision: PQC Activated (Request #{latest['Req #']})**\n\nThe security level for this {latest['Device']} device is high enough and latency is manageable. The system has successfully deployed quantum-resistant encryption.")
             else:
-                st.warning(f"**Latest Decision: Classical Maintained (Request #{latest['Req #']})**\n\nThe system prioritized availability due to {latest['Final Latency']}ms latency.")
+                st.warning(
+                    f"**Latest Decision: Classical Maintained (Request #{latest['Req #']})**\n\nThe system prioritized availability. Given the final latency of {latest['Final Latency']}ms, PQC would have caused a timeout or poor user experience.")
 
         st.markdown("### Activity Data")
         tab_table, tab_trend = st.tabs(["Log History", "View Trends"])
