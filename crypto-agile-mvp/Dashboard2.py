@@ -88,15 +88,16 @@ st.markdown("""
         color: white !important;
     }
 
-    /* LATENCY INPUT FIX: White Background with Dark Text for Visibility */
-    div[data-baseweb="input"] {
+    /* LATENCY INPUT VISIBILITY FIX */
+    /* Target the container and the actual input field */
+    div[data-testid="stNumberInput"] div[data-baseweb="input"] {
         background-color: #ffffff !important;
-        border: 1px solid #4b5563 !important;
+        border-radius: 4px;
     }
-    input[type="number"], div[data-baseweb="input"] input {
+    
+    div[data-testid="stNumberInput"] input {
         color: #111827 !important;
         -webkit-text-fill-color: #111827 !important;
-        font-weight: 600 !important;
     }
 
     /* BUTTONS */
@@ -139,21 +140,17 @@ def get_real_latency():
 def generalize_client():
     os_name = platform.system().lower()
     
-    # 1. Immediate Desktop detection for Windows/Mac
     if os_name in ["windows", "darwin"]:
         return "desktop"
     
-    # 2. Refined Linux detection for Personal Mode
     if os_name == "linux":
-        # SAFE BATTERY CHECK: Wrap in try-except to prevent FileNotFoundError on Streamlit Cloud
         has_battery = False
         try:
             battery = psutil.sensors_battery()
             has_battery = battery is not None
         except:
-            has_battery = False # Fail silently if system path doesn't exist
+            has_battery = False
 
-        # Servers typically have high core counts (>16). Personal PCs usually <= 16.
         is_low_core = psutil.cpu_count() <= 16
         
         if has_battery or is_low_core:
@@ -168,21 +165,17 @@ def process_request(sim_device, sim_latency, sim_security, is_manual=False):
     cls_res = run_classical_test(MESSAGE, sim_security)
     pqc_res = run_pqc_test(MESSAGE, sim_security)
 
-    # Consistent Latency Logic
     base_latency = sim_latency
     service_delay = cloud_service.process_request()['service_delay_ms']
     crypto_math_time = pqc_res['cpu_time_ms']
     jitter = random.uniform(5, 20)
     final_latency = base_latency + service_delay + crypto_math_time + jitter
 
-    # CPU Logic stays here for the brain (decide_suite)
     cpu_util_for_logic = psutil.cpu_percent()
 
     start_perf = time.perf_counter()
-    # SV API still uses system metrics internally
     new_state, meta = decide_suite(st.session_state.current_state, sim_security, sim_device, final_latency)
 
-    # Watchdog Logic
     if new_state == "pqc" and final_latency > 500:
         new_state = "classical"
         meta["reason"] = "Watchdog Override"
@@ -272,16 +265,13 @@ st.title("Crypto-Agile API Gateway")
 tab_main, tab_about = st.tabs(["Dashboard", "System Info"])
 
 with tab_main:
-    # --- INSTRUCTIONS BOX ---
     with st.expander(f"Instructions for {mode}", expanded=True):
         if mode == "Control Mode":
-            st.info(
-                f"Control Mode: You are testing the {device}. Your manual baseline of {latency_in}ms will be sent directly to the gateway.")
+            st.info(f"Control Mode: You are testing the {device}. Your manual baseline of {latency_in}ms will be sent directly to the gateway.")
         elif mode == "Simulation Mode":
             st.info("Simulation Mode: Generates random users with security levels locked to their device type.")
         elif mode == "Personal Mode":
-            st.info(
-                f"Personal Mode: Testing your actual hardware. Security Level is set to {STUDY_CLIENTS['desktop']}.")
+            st.info(f"Personal Mode: Testing your actual hardware. Security Level is set to {STUDY_CLIENTS['desktop']}.")
         else:
             st.info("Traffic Stream Mode: A live heartbeat of global requests.")
 
@@ -290,15 +280,12 @@ with tab_main:
         col_lg1, col_lg2 = st.columns(2)
         with col_lg1:
             st.write("Side A: Performance")
-            st.write(
-                "If the network is slow or the device is weak, the system uses Classical encryption because it's fast.")
+            st.write("If the network is slow or the device is weak, the system uses Classical encryption because it's fast.")
         with col_lg2:
             st.write("Side B: Security")
-            st.write(
-                "If the data is sensitive and the device is strong, the system uses PQC to protect against Quantum hackers.")
+            st.write("If the data is sensitive and the device is strong, the system uses PQC to protect against Quantum hackers.")
         st.write("The SV Score: This is the Weight. If the score is high, the scale tips toward PQC.")
 
-    # --- LIVE GATEWAY STATUS COUNTERS ---
     st.markdown("### Live Gateway Status")
 
     if st.session_state.history:
@@ -316,7 +303,6 @@ with tab_main:
 
     st.markdown("---")
 
-    # Handle Background Streaming
     if st.session_state.streaming and mode == "Traffic Stream Mode":
         s_device = random.choice(list(STUDY_CLIENTS.keys()))
         s_lat_in = random.uniform(50, 500)
@@ -335,7 +321,6 @@ with tab_main:
         time.sleep(stream_speed)
         st.rerun()
 
-    # --- RESULTS ---
     if st.session_state.history:
         df = pd.DataFrame(st.session_state.history)
         latest = df.iloc[-1]
@@ -348,11 +333,9 @@ with tab_main:
 
         with col_m2:
             if latest["Mode"] == "pqc":
-                st.success(
-                    f"**Latest Decision: PQC Activated (Request #{latest['Req #']})**\n\nThe security level for this {latest['Device']} device is high enough and latency is manageable. The system has successfully deployed quantum-resistant encryption.")
+                st.success(f"**Latest Decision: PQC Activated (Request #{latest['Req #']})**\n\nThe security level for this {latest['Device']} device is high enough and latency is manageable. The system has successfully deployed quantum-resistant encryption.")
             else:
-                st.warning(
-                    f"**Latest Decision: Classical Maintained (Request #{latest['Req #']})**\n\nThe system prioritized availability. Given the final latency of {latest['Final Latency']}ms, PQC would have caused a timeout or poor user experience.")
+                st.warning(f"**Latest Decision: Classical Maintained (Request #{latest['Req #']})**\n\nThe system prioritized availability. Given the final latency of {latest['Final Latency']}ms, PQC would have caused a timeout or poor user experience.")
 
         st.markdown("### Activity Data")
         tab_table, tab_trend = st.tabs(["Log History", "View Trends"])
@@ -362,8 +345,7 @@ with tab_main:
 
         with tab_trend:
             fig = go.Figure()
-            fig.add_trace(
-                go.Scatter(x=df["Req #"], y=df["SV Score"], mode='lines+markers', line=dict(color='#a855f7', width=3)))
+            fig.add_trace(go.Scatter(x=df["Req #"], y=df["SV Score"], mode='markers+lines', line=dict(color='#a855f7', width=3)))
             fig.update_layout(
                 xaxis_title="Request Number (#)",
                 yaxis_title="Security Value (SV Score)",
@@ -387,8 +369,7 @@ the project aims to ensure long-term data protection, secure communication, and 
     col_a, col_b = st.columns(2)
     with col_a:
         st.subheader("The Agility Logic")
-        st.write(
-            "Agility means being able to switch algorithms without stopping the system. We use an **SV Score (Security Value)** formula to decide when to switch.")
+        st.write("Agility means being able to switch algorithms without stopping the system. We use an **SV Score (Security Value)** formula to decide when to switch.")
 
     with col_b:
         st.subheader("The Algorithms")
