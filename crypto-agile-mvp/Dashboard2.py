@@ -25,7 +25,7 @@ STUDY_CLIENTS = {
 }
 
 # =========================
-# STYLE
+# STYLE - FORCED VISIBILITY FIX
 # =========================
 st.markdown("""
 <style>
@@ -75,29 +75,24 @@ st.markdown("""
         border: 1px solid #4b5563 !important;
     }
 
-    div[data-baseweb="popover"] ul {
-        background-color: #1f2937 !important;
+    /* LATENCY INPUT FORCED VISIBILITY FIX */
+    /* This targets the background of the number input container */
+    div[data-baseweb="input"] {
+        background-color: #ffffff !important;
         border: 1px solid #4b5563 !important;
     }
-    div[data-baseweb="popover"] li {
-        background-color: #1f2937 !important;
-        color: white !important;
-    }
-    div[data-baseweb="popover"] li:hover {
-        background-color: #7c3aed !important;
-        color: white !important;
-    }
-
-    /* LATENCY INPUT VISIBILITY FIX */
-    /* Target the container and the actual input field */
-    div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-        background-color: #ffffff !important;
-        border-radius: 4px;
-    }
     
-    div[data-testid="stNumberInput"] input {
+    /* This targets the actual text typed inside the box */
+    input[type="number"], div[data-baseweb="input"] input {
         color: #111827 !important;
         -webkit-text-fill-color: #111827 !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Targets the +/- buttons for number input */
+    div[data-testid="stNumberInput"] button {
+        background-color: #f0f2f6 !important;
+        color: #111827 !important;
     }
 
     /* BUTTONS */
@@ -139,10 +134,8 @@ def get_real_latency():
 
 def generalize_client():
     os_name = platform.system().lower()
-    
     if os_name in ["windows", "darwin"]:
         return "desktop"
-    
     if os_name == "linux":
         has_battery = False
         try:
@@ -150,39 +143,27 @@ def generalize_client():
             has_battery = battery is not None
         except:
             has_battery = False
-
-        is_low_core = psutil.cpu_count() <= 16
-        
-        if has_battery or is_low_core:
+        if has_battery or psutil.cpu_count() <= 16:
             return "desktop"
-        
         return "server"
-    
     return "mobile"
 
 
 def process_request(sim_device, sim_latency, sim_security, is_manual=False):
     cls_res = run_classical_test(MESSAGE, sim_security)
     pqc_res = run_pqc_test(MESSAGE, sim_security)
-
     base_latency = sim_latency
     service_delay = cloud_service.process_request()['service_delay_ms']
     crypto_math_time = pqc_res['cpu_time_ms']
     jitter = random.uniform(5, 20)
     final_latency = base_latency + service_delay + crypto_math_time + jitter
-
-    cpu_util_for_logic = psutil.cpu_percent()
-
     start_perf = time.perf_counter()
     new_state, meta = decide_suite(st.session_state.current_state, sim_security, sim_device, final_latency)
-
     if new_state == "pqc" and final_latency > 500:
         new_state = "classical"
         meta["reason"] = "Watchdog Override"
         meta["sv_api"] = 0.0
-
     exec_time_ms = (time.perf_counter() - start_perf) * 1000
-
     st.session_state.current_state = new_state
     algo = pqc_res['algorithm'] if new_state == "pqc" else cls_res['algorithm']
     return new_state, meta, algo, final_latency, exec_time_ms
@@ -287,7 +268,6 @@ with tab_main:
         st.write("The SV Score: This is the Weight. If the score is high, the scale tips toward PQC.")
 
     st.markdown("### Live Gateway Status")
-
     if st.session_state.history:
         hist_df = pd.DataFrame(st.session_state.history)
         pqc_count = len(hist_df[hist_df["Mode"] == "pqc"])
@@ -302,7 +282,6 @@ with tab_main:
         st.metric("Classical Active Requests", classical_count)
 
     st.markdown("---")
-
     if st.session_state.streaming and mode == "Traffic Stream Mode":
         s_device = random.choice(list(STUDY_CLIENTS.keys()))
         s_lat_in = random.uniform(50, 500)
@@ -324,53 +303,33 @@ with tab_main:
     if st.session_state.history:
         df = pd.DataFrame(st.session_state.history)
         latest = df.iloc[-1]
-
         st.subheader("Decision Insight")
         col_m1, col_m2 = st.columns([1, 2])
-
         with col_m1:
             st.metric("Latest SV Score", latest["SV Score"])
-
         with col_m2:
             if latest["Mode"] == "pqc":
-                st.success(f"**Latest Decision: PQC Activated (Request #{latest['Req #']})**\n\nThe security level for this {latest['Device']} device is high enough and latency is manageable. The system has successfully deployed quantum-resistant encryption.")
+                st.success(f"**Latest Decision: PQC Activated (Request #{latest['Req #']})**\n\nThe security level for this {latest['Device']} device is high enough and latency is manageable.")
             else:
-                st.warning(f"**Latest Decision: Classical Maintained (Request #{latest['Req #']})**\n\nThe system prioritized availability. Given the final latency of {latest['Final Latency']}ms, PQC would have caused a timeout or poor user experience.")
+                st.warning(f"**Latest Decision: Classical Maintained (Request #{latest['Req #']})**\n\nThe system prioritized availability due to {latest['Final Latency']}ms latency.")
 
         st.markdown("### Activity Data")
         tab_table, tab_trend = st.tabs(["Log History", "View Trends"])
-
         with tab_table:
             st.dataframe(df.sort_values("Req #", ascending=False), use_container_width=True, hide_index=True)
-
         with tab_trend:
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=df["Req #"], y=df["SV Score"], mode='markers+lines', line=dict(color='#a855f7', width=3)))
-            fig.update_layout(
-                xaxis_title="Request Number (#)",
-                yaxis_title="Security Value (SV Score)",
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=300
-            )
+            fig.update_layout(xaxis_title="Request Number (#)", yaxis_title="Security Value (SV Score)", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), height=300)
             st.plotly_chart(fig, use_container_width=True)
 
 with tab_about:
     st.header("About the Crypto-Agile Gateway")
-    st.write("""
-    This project demonstrates a next-generation security layer for API Gateways.
-As we move toward the 'Quantum Era', computers will become powerful enough to break current encryption (RSA/ECC),
-making traditional security approaches unreliable. To address this, the system explores quantum-resistant cryptographic algorithms, such as lattice-based encryption,
-which are designed to withstand attacks from quantum computers. By integrating these advanced techniques into API Gateway infrastructure,
-the project aims to ensure long-term data protection, secure communication, and future-proof defenses against emerging computational threats.
-    """)
-
+    st.write("""This project demonstrates a next-generation security layer for API Gateways. As we move toward the 'Quantum Era', computers will become powerful enough to break current encryption (RSA/ECC), making traditional security approaches unreliable. To address this, the system explores quantum-resistant cryptographic algorithms, such as lattice-based encryption, which are designed to withstand attacks from quantum computers. By integrating these advanced techniques into API Gateway infrastructure, the project aims to ensure long-term data protection, secure communication, and future-proof defenses against emerging computational threats.""")
     col_a, col_b = st.columns(2)
     with col_a:
         st.subheader("The Agility Logic")
         st.write("Agility means being able to switch algorithms without stopping the system. We use an **SV Score (Security Value)** formula to decide when to switch.")
-
     with col_b:
         st.subheader("The Algorithms")
         st.markdown("""
