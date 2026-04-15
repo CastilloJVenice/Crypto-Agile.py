@@ -138,15 +138,23 @@ def get_real_latency():
 
 def generalize_client():
     os_name = platform.system().lower()
-    # Logic update: PCs running in Linux containers (like Streamlit Cloud) 
-    # should be treated as "desktop" for personal mode simulations.
+    
+    # 1. Immediate Desktop detection for Windows/Mac
     if os_name in ["windows", "darwin"]:
         return "desktop"
-    elif os_name == "linux":
-        # Check if we are in a common container/personal environment
-        if "STREAMLIT" in platform.processor().upper() or psutil.cpu_count() <= 8:
+    
+    # 2. Refined Linux detection for Personal Mode
+    if os_name == "linux":
+        # Check for battery (Common in Laptops/Desktops, rare in Servers)
+        has_battery = psutil.sensors_battery() is not None
+        # Servers typically have very high core counts (>16)
+        is_low_core = psutil.cpu_count() <= 16
+        
+        if has_battery or is_low_core:
             return "desktop"
+        
         return "server"
+    
     return "mobile"
 
 
@@ -194,10 +202,10 @@ if mode == "Control Mode":
 
     with st.sidebar.expander("Latency Threshold Interpretation", expanded=False):
         st.write("""
-        - 0-100 ms: Optimal (Fast and stable)
-        - 101-200 ms: Acceptable (Normal operation)
-        - 201-500 ms: Degraded (Performance drop)
-        - \>500 ms: Critical (Fail-safe active)
+        - 0-100 ms: Optimal (Fast and stable) [cite: 586]
+        - 101-200 ms: Acceptable (Normal operation) [cite: 587]
+        - 201-500 ms: Degraded (Performance drop) [cite: 588]
+        - \>500 ms: Critical (Fail-safe active) [cite: 589]
         """)
 
     security_in = STUDY_CLIENTS[device]
@@ -206,7 +214,7 @@ if mode == "Control Mode":
 
 elif mode == "Simulation Mode":
     num_requests = st.sidebar.slider("Requests to Send", 1, 20, 5)
-elif mode == "Personal Mode":
+elif mode mode == "Personal Mode":
     num_requests = 1
 else:
     stream_speed = st.sidebar.slider("Traffic Speed (sec)", 0.5, 3.0, 1.5)
@@ -363,23 +371,23 @@ with tab_main:
 with tab_about:
     st.header("About the Crypto-Agile Gateway")
     st.write("""
-    This project demonstrates a next-generation security layer for API Gateways.
+    This project demonstrates a next-generation security layer for API Gateways. [cite: 742, 954]
 As we move toward the 'Quantum Era', computers will become powerful enough to break current encryption (RSA/ECC),
-making traditional security approaches unreliable. To address this, the system explores quantum-resistant cryptographic algorithms, such as lattice-based encryption,
-which are designed to withstand attacks from quantum computers. By integrating these advanced techniques into API Gateway infrastructure,
-the project aims to ensure long-term data protection, secure communication, and future-proof defenses against emerging computational threats.
+making traditional security approaches unreliable. [cite: 808, 839] To address this, the system explores quantum-resistant cryptographic algorithms, such as lattice-based encryption,
+which are designed to withstand attacks from quantum computers. [cite: 809, 868] By integrating these advanced techniques into API Gateway infrastructure,
+the project aims to ensure long-term data protection, secure communication, and future-proof defenses against emerging computational threats. [cite: 933, 951]
     """)
 
     col_a, col_b = st.columns(2)
     with col_a:
         st.subheader("The Agility Logic")
         st.write(
-            "Agility means being able to switch algorithms without stopping the system. We use an **SV Score (Security Value)** formula to decide when to switch.")
+            "Agility means being able to switch algorithms without stopping the system. [cite: 890, 1084] We use an **SV Score (Security Value)** formula to decide when to switch. [cite: 1740, 1862]")
 
     with col_b:
         st.subheader("The Algorithms")
         st.markdown("""
-        * Kyber (KEM): Used for key exchange.
-        * Dilithium (Sig): Used for digital signatures.
-        * ECDSA: The current standard for mobile and IoT.
+        * Kyber (KEM): Used for key exchange. [cite: 871, 981]
+        * Dilithium (Sig): Used for digital signatures. [cite: 869, 978]
+        * ECDSA: The current standard for mobile and IoT. [cite: 826, 833]
         """)
