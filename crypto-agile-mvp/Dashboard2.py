@@ -145,9 +145,15 @@ def generalize_client():
     
     # 2. Refined Linux detection for Personal Mode
     if os_name == "linux":
-        # Check for battery (Common in Laptops/Desktops, rare in Servers)
-        has_battery = psutil.sensors_battery() is not None
-        # Servers typically have very high core counts (>16)
+        # SAFE BATTERY CHECK: Wrap in try-except to prevent FileNotFoundError on Streamlit Cloud
+        has_battery = False
+        try:
+            battery = psutil.sensors_battery()
+            has_battery = battery is not None
+        except:
+            has_battery = False # Fail silently if system path doesn't exist
+
+        # Servers typically have high core counts (>16). Personal PCs usually <= 16.
         is_low_core = psutil.cpu_count() <= 16
         
         if has_battery or is_low_core:
