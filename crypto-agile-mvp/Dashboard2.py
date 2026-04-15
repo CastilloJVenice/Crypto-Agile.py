@@ -25,7 +25,7 @@ STUDY_CLIENTS = {
 }
 
 # =========================
-# STYLE - FORCED VISIBILITY FIX
+# STYLE - FINAL VISIBILITY FIX
 # =========================
 st.markdown("""
 <style>
@@ -75,23 +75,23 @@ st.markdown("""
         border: 1px solid #4b5563 !important;
     }
 
-    /* LATENCY INPUT FORCED VISIBILITY FIX */
-    /* This targets the background of the number input container */
-    div[data-baseweb="input"] {
-        background-color: #ffffff !important;
+    /* --- LATENCY INPUT FORCED WHITE TEXT FIX --- */
+    /* Forces the background to be dark but the text to be pure white */
+    div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+        background-color: #111827 !important;
         border: 1px solid #4b5563 !important;
     }
     
-    /* This targets the actual text typed inside the box */
-    input[type="number"], div[data-baseweb="input"] input {
-        color: #111827 !important;
-        -webkit-text-fill-color: #111827 !important;
-        font-weight: 600 !important;
+    /* Targets the actual text inside the input field */
+    div[data-testid="stNumberInput"] input {
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        font-weight: 700 !important;
     }
-    
-    /* Targets the +/- buttons for number input */
+
+    /* Ensures the plus/minus buttons are high contrast */
     div[data-testid="stNumberInput"] button {
-        background-color: #f0f2f6 !important;
+        background-color: #ffffff !important;
         color: #111827 !important;
     }
 
