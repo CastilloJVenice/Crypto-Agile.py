@@ -138,7 +138,16 @@ def get_real_latency():
 
 def generalize_client():
     os_name = platform.system().lower()
-    return "desktop" if os_name in ["windows", "darwin"] else "server" if os_name == "linux" else "mobile"
+    # Logic update: PCs running in Linux containers (like Streamlit Cloud) 
+    # should be treated as "desktop" for personal mode simulations.
+    if os_name in ["windows", "darwin"]:
+        return "desktop"
+    elif os_name == "linux":
+        # Check if we are in a common container/personal environment
+        if "STREAMLIT" in platform.processor().upper() or psutil.cpu_count() <= 8:
+            return "desktop"
+        return "server"
+    return "mobile"
 
 
 def process_request(sim_device, sim_latency, sim_security, is_manual=False):
