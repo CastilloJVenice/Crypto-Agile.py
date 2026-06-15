@@ -1,60 +1,58 @@
-import oqs
+from kyber_py.kyber import Kyber512, Kyber768, Kyber1024
+from dilithium_py.dilithium import Dilithium2, Dilithium3, Dilithium5
 
 # ==========================================
-# KYBER KEM WRAPPER (OQS VERSION)
+# KYBER KEM WRAPPER (kyber-py VERSION)
 # ==========================================
 class KyberKEM:
     def __init__(self, security_level=2):
-        # Map levels to OQS algorithm strings
         if security_level <= 2:
+            self.alg = Kyber512
             self.name = "Kyber512"
         elif security_level <= 4:
+            self.alg = Kyber768
             self.name = "Kyber768"
         else:
+            self.alg = Kyber1024
             self.name = "Kyber1024"
-        
+
     def generate_keypair(self):
-        with oqs.KeyEncapsulation(self.name) as kem:
-            public_key = kem.generate_keypair()
-            # Needed for your KEY_POOL in main3.py
-            private_key = kem.export_secret_key()
-            return public_key, private_key
+        pk, sk = self.alg.keygen()
+        return pk, sk
 
     def encapsulate(self, public_key):
-        with oqs.KeyEncapsulation(self.name) as kem:
-            # FIX: The method name in OQS is 'encap_secret'
-            ciphertext, shared_secret = kem.encap_secret(public_key)
-            return ciphertext, shared_secret
+        shared_secret, ciphertext = self.alg.encaps(public_key)
+        return ciphertext, shared_secret
 
-    def decapsulate(self, ciphertext, secret_key):
-        with oqs.KeyEncapsulation(self.name) as kem:
-            # FIX: The method name in OQS is 'decap_secret'
-            shared_secret = kem.decap_secret(ciphertext, secret_key)
-            return shared_secret
+    def decapsulate(self, secret_key, ciphertext):
+        return self.alg.decaps(secret_key, ciphertext)
+
 
 # ==========================================
-# DILITHIUM SIG WRAPPER (OQS VERSION)
+# DILITHIUM SIG WRAPPER (dilithium-py VERSION)
 # ==========================================
 class DilithiumSig:
     def __init__(self, security_level=2):
         if security_level <= 2:
+            self.alg = Dilithium2
             self.name = "Dilithium2"
         elif security_level <= 4:
+            self.alg = Dilithium3
             self.name = "Dilithium3"
         else:
+            self.alg = Dilithium5
             self.name = "Dilithium5"
 
     def generate_keypair(self):
-        with oqs.Signature(self.name) as sig:
-            public_key = sig.generate_keypair()
-            private_key = sig.export_secret_key()
-            return public_key, private_key
+        pk, sk = self.alg.keygen()
+        return pk, sk
 
-    def sign(self, message, secret_key):
-        # Initialize with secret_key to sign
-        with oqs.Signature(self.name, secret_key) as sig:
-            return sig.sign(message)
+    def sign(self, message: bytes, secret_key: bytes) -> bytes:
+        if isinstance(message, str):
+            message = message.encode('utf-8')
+        return self.alg.sign(secret_key, message)
 
-    def verify(self, message, signature, public_key):
-        with oqs.Signature(self.name) as sig:
-            return sig.verify(message, signature, public_key)
+    def verify(self, message: bytes, signature: bytes, public_key: bytes) -> bool:
+        if isinstance(message, str):
+            message = message.encode('utf-8')
+        return self.alg.verify(public_key, message, signature)
