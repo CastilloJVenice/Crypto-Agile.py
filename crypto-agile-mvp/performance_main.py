@@ -17,7 +17,7 @@ MESSAGE = b'Test message for authentication and key exchange'
 CLIENTS = [
     {'type': 'iot', 'security': 2},
     {'type': 'mobile', 'security': 3},
-    {'type': 'desktop', 'security': 4},
+    {'type': 'desktop', 'security': 3},
     {'type': 'server', 'security': 5}
 ]
 
