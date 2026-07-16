@@ -1,33 +1,30 @@
+import threading
 import time
 import statistics
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-# Import your modules (Ensure these files are in the same directory)
 from switching import decide_suite
-import classical
-from pqc import KyberKEM, DilithiumSig
+from cal import CryptoAbstractionLayer
 
-app = FastAPI(title="Crypto-Agile API Gateway (MVP)")
-
-# --- GLOBAL STATE ---
-# Start in Classical Mode (Safe default)
-SYSTEM_STATE = "classical"
+app = FastAPI(title="Crypto-Agile API Gateway (Refactored MVP)")
 
 
-# --- COMPONENT: TELEMETRY AGGREGATOR ---
-# This class implements the "Telemetry Aggregator" box from Figure 1.
-# It collects real-time streams and processes them into usable data for the controller.
+# --- DATA MODELS ---
+class AuthRequest(BaseModel):
+    client_type: str  # 'iot', 'mobile', 'desktop', 'server'
+    security_level: int  # 1 to 5
+
+
+# --- TELEMETRY AGGREGATOR COMPONENT ---
 class TelemetryAggregator:
     def __init__(self, window_size=10, initial_seed=50.0):
         self.window_size = window_size
-        # Seed history so the first request has a baseline to work with
         self.history = [initial_seed]
 
     def update(self, latency_ms: float):
         """Ingest new real-time stream data."""
         self.history.append(latency_ms)
-        # Keep the window size fixed (e.g., last 10 requests)
         if len(self.history) > self.window_size:
             self.history.pop(0)
 
@@ -38,66 +35,65 @@ class TelemetryAggregator:
         return statistics.mean(self.history)
 
 
-# Instantiate the component (Singleton pattern)
+# --- KEY LIFECYCLE MANAGER (Asynchronous Key Pooling) ---
+# Thread-safe local storage buffer for pre-generated crypto elements
+KEY_POOL = {
+    2: {"kem": [], "sig": []},  # Level 1-2 (Kyber512 / Dilithium2)
+    3: {"kem": [], "sig": []},  # Level 3-4 (Kyber768 / Dilithium3)
+    5: {"kem": [], "sig": []}  # Level 5   (Kyber1024 / Dilithium5)
+}
+POOL_MAX_SIZE = 10
+
+
+def background_key_generator():
+    """Background engine tracking pool sizes to buffer key sets natively."""
+    from pqc import KyberKEM, DilithiumSig
+    while True:
+        for level in [2, 3, 5]:
+            # Maintain KEM keys
+            if len(KEY_POOL[level]["kem"]) < POOL_MAX_SIZE:
+                try:
+                    kem = KyberKEM(security_level=level)
+                    pair = kem.generate_keypair()
+                    KEY_POOL[level]["kem"].append(pair)
+                except Exception:
+                    pass
+
+            # Maintain Digital Signature keys
+            if len(KEY_POOL[level]["sig"]) < POOL_MAX_SIZE:
+                try:
+                    sig = DilithiumSig(security_level=level)
+                    pair = sig.generate_keypair()
+                    KEY_POOL[level]["sig"].append(pair)
+                except Exception:
+                    pass
+        time.sleep(0.5)
+
+
+
+bg_worker = threading.Thread(target=background_key_generator, daemon=True)
+bg_worker.start()
+
+# --- SYSTEM INITIALIZATION ---
 aggregator = TelemetryAggregator()
+cal_layer = CryptoAbstractionLayer(key_pool_reference=KEY_POOL)
+SYSTEM_STATE = "classical"  # Safe architectural standard startup state
 
 
-class AuthRequest(BaseModel):
-    client_type: str  # 'iot', 'mobile', 'desktop', 'server'
-    security_level: int  # 1 to 5
+# --- BACKGROUND TASK HANDLING ---
+def async_telemetry_update(latency: float):
+    """Safely updates moving state information off the main response route."""
+    aggregator.update(latency)
 
 
-# --- HELPER: REAL-TIME BENCHMARKING ---
-def execute_and_measure_pqc(security_level: int):
-    """
-    Runs the actual PQC Key Encapsulation and Signing processes
-    and returns the execution time in milliseconds.
-    """
-    # Use perf_counter for high-precision benchmarking
-    start_time = time.perf_counter()
-
-    # 1. KEM Operations (Kyber)
-    # Instantiate the class from your pqc.py
-    kem = KyberKEM(security_level=security_level)
-    pk, sk = kem.generate_keypair()
-    ciphertext, shared_secret = kem.encapsulate(pk)
-    # Decapsulate is part of the handshake, so we measure it too
-    _ = kem.decapsulate(sk, ciphertext)
-
-    # 2. Signature Operations (Dilithium)
-    # Instantiate the class from your pqc.py
-    sig_agent = DilithiumSig(security_level=security_level)
-    pk_sig, sk_sig = sig_agent.generate_keypair()
-    message = b"Test Authentication Payload"
-    signature = sig_agent.sign(message, sk_sig)
-    # Verification is the gateway's job
-    _ = sig_agent.verify(message, signature, pk_sig)
-
-    end_time = time.perf_counter()
-
-    # Return duration in milliseconds
-    return (end_time - start_time) * 1000
-
-
+# --- CORE API GATEWAY ROUTE ---
 @app.post("/authenticate")
-def authenticate_client(request: AuthRequest):
-    """
-    Main API Endpoint (Data Plane).
-    Uses 'def' to run CPU-bound crypto tasks in a thread pool.
-    """
+def authenticate_client(request: AuthRequest, background_tasks: BackgroundTasks):
     global SYSTEM_STATE
 
-    # ---------------------------------------------------------
-    # 1. TELEMETRY GATHERING (Real-Time Prediction)
-    # ---------------------------------------------------------
-    # Use the Telemetry Aggregator component to get the current estimate
+    # 1. Telemetry Gathering & Control Plane Decision Engine Assessment
     current_avg_pqc_latency = aggregator.get_prediction()
 
-    # ---------------------------------------------------------
-    # 2. CONTROL PLANE: DECISION MAKING
-    # ---------------------------------------------------------
-    # The Controller decides the suite based on the PREDICTED latency.
-    # This aligns with the "Crypto-Agility Controller" in Figure 1.
     new_state, metadata = decide_suite(
         current_state=SYSTEM_STATE,
         security_req=request.security_level,
@@ -105,49 +101,24 @@ def authenticate_client(request: AuthRequest):
         est_latency_pqc=current_avg_pqc_latency
     )
 
-    # ---------------------------------------------------------
-    # 3. DATA PLANE: EXECUTION & MEASUREMENT
-    # ---------------------------------------------------------
-    measured_latency = 0.0
+    # 2. Data Plane Cryptographic Execution managed cleanly via the CAL Engine
+    payload = b"Test Authentication Payload"
+    measured_latency, algorithm_used = cal_layer.execute(
+        payload=payload,
+        state_mode=new_state,
+        security_level=request.security_level
+    )
 
-    # Run the Watchdog Check (Fail-Safe / Circuit Breaker)
-    # Aligning with Topic 2: "Quantum-safe watchdog timer protocol"
-    WATCHDOG_LIMIT_MS = 500.0
-    if new_state == 'pqc' and current_avg_pqc_latency > WATCHDOG_LIMIT_MS:
-        print(f"!!! WATCHDOG TRIGGERED: Latency {current_avg_pqc_latency:.2f}ms too high. Fallback.")
-        new_state = 'classical'
-        metadata['reason'] = "Watchdog Override"
-
-    # EXECUTE THE ALGORITHMS
-    if new_state == 'pqc':
-        # --- PQC MODE ---
-        # Run the heavy math and measure how long it ACTUALLY takes
-        measured_latency = execute_and_measure_pqc(request.security_level)
-
-        # UPDATE TELEMETRY: Feed this new fact back into the Aggregator
-        aggregator.update(measured_latency)
-
-    else:
-        # --- CLASSICAL MODE ---
-        # We simulate or measure classical. Classical is usually fast.
-        start_c = time.perf_counter()
-
-        # Using the low-level functions from your classical.py
-        priv, pub = classical.generate_ecdh_keypair(request.security_level)
-        # Simulate simple handshake
-        _ = classical.derive_shared_key_ecdh(priv, pub)
-
-        end_c = time.perf_counter()
-        measured_latency = (end_c - start_c) * 1000
-
-    # ---------------------------------------------------------
-    # 4. STATE SYNC & RESPONSE
-    # ---------------------------------------------------------
+    # System State Synchronizer Check
     SYSTEM_STATE = new_state
+
+    # 3. Decouple Telemetry Processing asynchronously to minimize client transit overhead
+    background_tasks.add_task(async_telemetry_update, measured_latency)
 
     return {
         "status": "success",
         "mode": SYSTEM_STATE.upper(),
+        "algorithm": algorithm_used,
         "sv_score": metadata['sv_api'],
         "decision_reason": metadata['reason'],
         "metrics": {
@@ -158,4 +129,5 @@ def authenticate_client(request: AuthRequest):
         "message": f"Secure connection established using {SYSTEM_STATE.upper()}."
     }
 
-# To run: uvicorn api:app --reload
+# To run manually via CLI:
+# uvicorn api:app --reload
