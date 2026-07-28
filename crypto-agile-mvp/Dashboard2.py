@@ -162,17 +162,25 @@ def generalize_client():
         user_agent = headers.get("User-Agent", "").lower()
         if any(
             mobile_word in user_agent
-            for mobile_word in ["mobile", "android", "iphone", "ipad", "ipod"]
+            for mobile_word in ["mobile", "android", "iphone", "ipod"]
         ):
             return "mobile"
+        if any(
+            iot_word in user_agent
+            for iot_word in ["armv", "raspberry", "kaios", "tizen", "webos"]
+        ):
+            return "iot"
     except Exception:
         pass
-    os_name = platform.system().lower()
-    if os_name in ["windows", "darwin"]:
-        return "desktop"
-
+    try:
+        if "arm" in platform.machine().lower() or "aarch64" in platform.machine().lower():
+            return "iot"
+        os_name = platform.system().lower()
+        if os_name == "linux" and psutil.cpu_count(logical=True) > 16:
+            return "server"
+    except Exception:
+        pass
     return "desktop"
-
 
 def process_request(sim_device, sim_latency, sim_security, is_manual=False):
     cls_res = run_classical_test(MESSAGE, sim_security)
