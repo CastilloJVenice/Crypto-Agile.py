@@ -157,20 +157,21 @@ def get_real_latency():
 
 
 def generalize_client():
+    try:
+        headers = st.context.headers
+        user_agent = headers.get("User-Agent", "").lower()
+        if any(
+            mobile_word in user_agent
+            for mobile_word in ["mobile", "android", "iphone", "ipad", "ipod"]
+        ):
+            return "mobile"
+    except Exception:
+        pass
     os_name = platform.system().lower()
     if os_name in ["windows", "darwin"]:
         return "desktop"
-    if os_name == "linux":
-        has_battery = False
-        try:
-            battery = psutil.sensors_battery()
-            has_battery = battery is not None
-        except:
-            has_battery = False
-        if has_battery or psutil.cpu_count() <= 16:
-            return "desktop"
-        return "server"
-    return "mobile"
+
+    return "desktop"
 
 
 def process_request(sim_device, sim_latency, sim_security, is_manual=False):
