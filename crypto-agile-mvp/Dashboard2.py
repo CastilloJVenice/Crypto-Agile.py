@@ -219,6 +219,13 @@ if mode == "Control Mode":
 elif mode == "Simulation Mode":
     num_requests = st.sidebar.slider("Requests to Send", 1, 20, 5)
 elif mode == "Personal Mode":
+    s_dev = st.sidebar.selectbox(
+        "Detected Client Device",
+        list(STUDY_CLIENTS.keys()),
+        index=1,  # Defaults to 'mobile'
+    )
+    s_sec = STUDY_CLIENTS[s_dev]
+    s_lat_in = get_real_latency()
     num_requests = 1
 else:
     stream_speed = st.sidebar.slider("Traffic Speed (sec)", 0.5, 3.0, 1.5)
